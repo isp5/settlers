@@ -36,9 +36,9 @@ let rec get_intersections color ls acc =
   | hd::tl -> 
     match hd with 
     | Some (c, s) -> 
-      if c = color then get_intersections c tl (hd::acc)
-      else get_intersections c tl acc
-    | None -> get_intersections c tl acc
+      if c = color then get_intersections color tl (hd::acc)
+      else get_intersections color tl acc
+    | None -> get_intersections color tl acc
     
 let rec get_roads color ls acc = 
   match ls with 
@@ -58,7 +58,7 @@ let associate_with_player p s : structures =
 
 let game_of_state s = 
   match s with 
-  | b, p1::p2::p3::[p4] , t, n -> 
+  | b, p1::p2::p3::[p4] , t, n -> begin
     match b with 
     | _, structures , _, _, _ -> 
       let p1_info = p1, (associate_with_player p1 structures) in
@@ -66,9 +66,11 @@ let game_of_state s =
       let p3_info = p3, (associate_with_player p3 structures) in
       let p4_info = p4, (associate_with_player p4 structures) in
       p1_info, p2_info, p3_info, p4_info, b, t, n
-      
+  end 
+  | _  -> failwith "something terrible has happened"
 
 let init_game () = game_of_state (gen_initial_state())
+
 
 
 let handle_move s m = failwith "If all the soul-and-body scars"
