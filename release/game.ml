@@ -80,9 +80,38 @@ let game_of_state s =
 
 let init_game () = game_of_state (gen_initial_state())
 
-      
 
-let init_game () = game_of_state (gen_initial_state())
+let rec check_structures ps s result acc : bool * point list =
+  match ps with 
+    [] -> result, acc
+  | hd::tl -> 
+    match List.nth s hd with 
+    | Some _ -> check_structures tl s (result || true) acc
+    | None -> check_structures tl s (result || false) (hd::acc)
+
+
+let rec gen_valid_initial_move ls = 
+  let (point, rest) = pick_one ls in 
+  let p1 = get_some point in 
+  match (List.nth ls p1) with 
+  | Some _ -> gen_valid_initial_move rest
+  | None -> 
+    let ps = adjacent_points p1 in
+    let (result, p2s) = check_structures ps ls false [] in 
+    if result then gen_valid_initial_move rest
+    else p1, (List.hd p2s) 
+
+(*will check validity of initial move.  If move is invalid a valid move is returned *)
+let initial_move_check g im = 
+  let (p1,p2) = im in 
+  let check_these =  adjacent_points p1 in 
+  let ( p1, p2, p3, p4, (map, (inters, roads), deck, discard, robber), t, n ) = g in 
+  if not (List.mem p2 check_these) then gen_valid_initial_move inters 
+  else 
+    let (result, p2s) = check_structures check_these inters false [] in
+    (if result then gen_valid_initial_move inters
+    else (p1, p2))
+      
 
 let handle_move s m = failwith "If all the soul-and-body scars"
 
