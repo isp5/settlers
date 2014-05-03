@@ -75,30 +75,27 @@ let handle_move s m = failwith "If all the soul-and-body scars"
 
 let presentation g = 
   let (p1, p2, p3, p4, b , t, n) = g in
-  if get_player_color p1 = t.active then begin
+  if get_player_color p1 = t.active then
     let np2 = hide_hand p2 in 
     let np3 = hide_hand p3 in 
     let np4 = hide_hand p4 in 
     p1, np2, np3, np4, b, t, n
-  end 
-  else if get_player_color p2 = t.active then begin
+  else if get_player_color p2 = t.active then 
     let np1 = hide_hand p1 in 
     let np3 = hide_hand p3 in 
     let np4 = hide_hand p4 in 
     np1, p2, np3, np4, b, t, n
-  end
-  else if get_player_color p3 = t.active then begin
+  else if get_player_color p3 = t.active then 
     let np1 = hide_hand p1 in 
     let np2 = hide_hand p2 in 
     let np4 = hide_hand p4 in 
     np1, np2, p3, np4, b, t, n
-  end
-  else begin
+  else
     let np1 = hide_hand p1 in 
     let np2 = hide_hand p2 in 
     let np3 = hide_hand p3 in 
     np1, np2, np3, p4, b, t, n
-  end
+ 
     
     
   
