@@ -67,8 +67,6 @@ let game_of_state s =
       let p4_info = p4, (associate_with_player p4 structures) in
       p1_info, p2_info, p3_info, p4_info, b, t, n
       
-    
-
 
 let init_game () = game_of_state (gen_initial_state())
 
@@ -76,31 +74,31 @@ let init_game () = game_of_state (gen_initial_state())
 let handle_move s m = failwith "If all the soul-and-body scars"
 
 let presentation g = 
-  let (p1, p2, p3, p4, s , t, n) = g in
+  let (p1, p2, p3, p4, b , t, n) = g in
   if get_player_color p1 = t.active then begin
-    let np1 = p1 in 
     let np2 = hide_hand p2 in 
     let np3 = hide_hand p3 in 
     let np4 = hide_hand p4 in 
+    p1, np2, np3, np4, b, t, n
   end 
   else if get_player_color p2 = t.active then begin
     let np1 = hide_hand p1 in 
-    let np2 = p2 in 
     let np3 = hide_hand p3 in 
     let np4 = hide_hand p4 in 
+    np1, p2, np3, np4, b, t, n
   end
   else if get_player_color p3 = t.active then begin
     let np1 = hide_hand p1 in 
     let np2 = hide_hand p2 in 
-    let np3 = p3 in 
     let np4 = hide_hand p4 in 
+    np1, np2, p3, np4, b, t, n
   end
   else begin
     let np1 = hide_hand p1 in 
     let np2 = hide_hand p2 in 
     let np3 = hide_hand p3 in 
-    let np4 = p4 in 
-  end; np1, np2, np3, np4, s, t, n
+    np1, np2, np3, p4, b, t, n
+  end
     
     
   
