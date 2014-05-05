@@ -19,13 +19,13 @@ let get_player_color pi =
   | c,_,_ -> c
 
 
-let get_current_playerinfo (g:game) : playerinfo = 
+let get_current_playerinfo (g:game)  = 
   let (p1, p2, p3, p4, board, turn, next) = g in 
   let color = turn.active in 
-  if get_player_color p1 = color then p1 
-  else if get_player_color p2 = color then p2
-  else if get_player_color p3 = color then p3
-  else p4 
+  if get_player_color p1 = color then (p1, 1) 
+  else if get_player_color p2 = color then (p2, 2)
+  else if get_player_color p3 = color then (p3, 3)
+  else (p4, 4) 
 
 (*replaces the nth element with el in ls. If n is larger than Length of ls then el is placed at end *)
 let rec replace_at_index el ls n = 
@@ -71,7 +71,7 @@ let initial_move (g:game) line : game =
   let new_road = (turn.active, (point1, point2)) in 
   let new_town = Some(turn.active, Town) in
   (*get the right player, make new info *)
-  let current_player = get_current_playerinfo g in
+  let (current_player, num) = get_current_playerinfo g in
   let current_info = snd current_player in 
   let sphl, rl = current_info in 
   (* need the hexes that correspond to this point1 *)
@@ -85,9 +85,9 @@ let initial_move (g:game) line : game =
   (* replace the right element of inters with the new value *) 
   let new_inters = replace_at_index new_town inters point1 in 
   let new_board = ((hlist, plist), (new_inters, (new_road::roads)), deck, discard, robber) in 
-  if current_player = p1 then ((fst p1, new_info), p2, p3, p4, new_board, turn, next)
-  else if current_player = p2 then (p1, (fst p2, new_info), p3, p4, new_board, turn, next)
-  else if current_player = p3 then (p1, p2, (fst p3, new_info), p4, new_board, turn, next)
+  if num = 1 then ((fst p1, new_info), p2, p3, p4, new_board, turn, next)
+  else if num = 2 then (p1, (fst p2, new_info), p3, p4, new_board, turn, next)
+  else if num = 3 then (p1, p2, (fst p3, new_info), p4, new_board, turn, next)
   else (p1, p2, p3, (fst p4, new_info), new_board, turn, next)
 
 
@@ -98,14 +98,35 @@ let get_player_hand pi =
   | _, h, _ -> h 
 
 let discard_move g cost : game = 
-  let current_player = get_current_playerinfo g in 
+  let (current_player, num) = get_current_playerinfo g in 
   let check_valid_cost g cost : bool = 
     let (inv, cards) = get_player_hand current_player in 
-    let sum = map_cost2 (-)  
-  let gen_valid_cost g cost : cost = in
-  let handle_cost g cost : game = in 
-  if not check_valid_cost g cost then 
-    let new_cost = gen_valid_cost g cost in
+    let sum = map_cost2 (-) inv cost in
+    match sum with 
+    | (b, w, o, l, g) -> 
+      if b < 0 || w < 0 || o < 0 || l < 0 || g < 0 then false
+      else true
+  in 
+  let gen_valid_cost g (inv:cost) : cost = 
+    match inv with 
+    | (b, w, o, l, g) -> 
+      (*do I need to allow for the +1*)
+      (Random.int b, Random.int w, Random.int o, Random.int l, Random.int g)
+  in
+  let handle_cost g cost : game = 
+    let (p1, p2, p3, p4, b, t, n) = g in 
+    let (inv, cards) = get_player_hand current_player in 
+    let new_inv = map_cost2 (-) inv cost in
+    let (color, hand, trophies) = fst current_player in 
+    let updated_hand = (new_inv, snd hand) in 
+    if num = 1 then (((color,updated_hand, trophies), snd current_player), p2, p3, p4, b, t, n) 
+    else if num = 2 then (p1, ((color, updated_hand, trophies), snd current_player), p3, p4, b, t, n)
+    else if num = 3 then (p1, p2, ((color, updated_hand, trophies), snd current_player), p4, b, t, n)
+    else (p1, p2, p3, ((color, updated_hand, trophies), snd current_player), b, t, n) 
+  in 
+  let (inv, cards) = get_player_hand current_player in 
+  if not (check_valid_cost g cost) then 
+    let new_cost = gen_valid_cost g inv in
     handle_cost g new_cost 
   else handle_cost g cost 
   
