@@ -110,8 +110,34 @@ let discard_move g cost : game =
   let gen_valid_cost g (inv:cost) : cost = 
     match inv with 
     | (b, w, o, l, g) -> 
-      (*do I need to allow for the +1*)
-      (Random.int b, Random.int w, Random.int o, Random.int l, Random.int g)
+      let rec make_list c n acc = 
+	match n with 
+	| 0 -> acc
+	| _ -> make_list c (n-1) (c::acc)
+      in 
+      let inv_list = (make_list Brick b []) @ (make_list Wool w []) @ (make_list Ore o []) @ (make_list Lumber l []) @ (make_list Grain g []) in 
+      (*grab a certain number from this list, convert it to a cost *) 
+      let hand_size = sum_cost inv in
+      let number_to_discard = hand_size/2 in
+      let rec pick_n ls n acc =  (*for this to work n must be smaller than size of the list *)
+	match n with 
+	| 0 -> acc 
+	| _ -> let (choice, rest) = pick_one ls in
+	       pick_n rest (n-1) (choice::acc) 
+      in 
+      let cards_to_discard = pick_n inv_list number_to_discard [] in 
+      let rec convert_to_cost ls cost = 
+	match ls with 
+	| [] -> cost
+	| hd::tl -> 
+	  match hd with 
+	  | Brick -> convert_to_cost tl (map_cost2 (+) cost (single_resource_cost Brick))
+	  | Wool -> convert_to_cost tl (map_cost2 (+) cost (single_resource_cost Wool))
+	  | Ore -> convert_to_cost tl (map_cost2 (+) cost (single_resource_cost Ore))
+	  | Lumber -> convert_to_cost tl (map_cost2 (+) cost (single_resource_cost Lumber))
+	  | Grain -> convert_to_cost tl (map_cost2 (+) cost (single_resource_cost Grain))
+      in
+      convert_to_cost cards_to_discard (0,0,0,0,0)
   in
   let handle_cost g cost : game = 
     let (p1, p2, p3, p4, b, t, n) = g in 
