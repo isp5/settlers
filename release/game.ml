@@ -86,10 +86,10 @@ let init_game () = game_of_state (gen_initial_state())
 let handle_move g m = 
   match m with 
   | InitialMove(line) -> None, Move.initial_move g line (*no one should ever win to start *)
-  | RobberMove(robbermove) -> failwith "not implemented"
-  | DiscardMove(cost) -> failwith "not implemented"
-  | TradeResponse(bool) -> failwith "not implemented" 
-  | Action(action) -> failwith "Action.handle_action g action "
+  | RobberMove(robbermove) -> None, Move.robber_move g robbermove (*robber move shouldn't result in win*)
+  | DiscardMove(cost) -> None, Move.discard_move g cost (*shouldn't result in a win? *)
+  | TradeResponse(bool) -> failwith "not implemented" (*shouldn't result in win*)
+  | Action(action) -> failwith "Action.handle_action g action " (*can result in win*)
 
 let presentation g = 
   let (p1, p2, p3, p4, b , t, n) = g in

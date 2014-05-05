@@ -27,6 +27,14 @@ let get_current_playerinfo (g:game)  =
   else if get_player_color p3 = color then (p3, 3)
   else (p4, 4) 
 
+let get_player_by_color g color = 
+  match g with 
+  | (p1, p2, p3, p4, _, _, _) -> 
+    if get_player_color p1 = color then (p1, 1) 
+    else if get_player_color p2 = color then (p2, 2)
+    else if get_player_color p3 = color then (p3, 3) 
+    else (p4, 4)
+
 (*replaces the nth element with el in ls. If n is larger than Length of ls then el is placed at end *)
 let rec replace_at_index el ls n = 
   match ls with 
@@ -91,7 +99,7 @@ let initial_move (g:game) line : game =
   else (p1, p2, p3, (fst p4, new_info), new_board, turn, next)
 
 
-let robber_move g rm : game = failwith "here too"
+
 
 let get_player_hand pi = 
   match (fst pi) with 
@@ -156,6 +164,79 @@ let discard_move g cost : game =
     handle_cost g new_cost 
   else handle_cost g cost 
   
+
+
+let robber_move g rm : game = 
+  let (p1, p2, p3, p4, board, turn, next) = g in 
+  let check_valid board rm : bool = 
+    let (piece, target) = rm in 
+    let (map, structures, deck, discard, robber) = board in 
+    let (inters, roads) = structures in 
+    (*let (hex_list, port_list) = map in*)
+    let points_to_check = piece_corners piece in 
+    let rec check_target ls color result1 result2 : (bool*bool) = 
+      match ls with 
+      | [] -> result1, result2
+      | hd::tl -> 
+	match List.nth inters hd with 
+	| Some (c,s) -> begin
+	  match color with 
+	  | Some col -> 
+	    if c = col then check_target tl color (true || result1) (true || result2)  
+	    else check_target tl color (false || result1) (true || result2)
+	  | None -> check_target tl color (false || result1) (true || result2)
+	end 
+	| None -> check_target tl color (false || result1) (false || result2)
+    in 
+    (*piece must be on board and not where robber is currently and target (or lack of) must be valid *) 
+    match target with 
+    | Some color -> 
+      let (right_target, valid_target) = check_target points_to_check (Some(color)) false false in
+      right_target && piece <> robber && piece <=  cMAX_PIECE_NUM && piece >= cMIN_PIECE_NUM 
+    | None -> 
+      let (right_target, valid_target) = check_target points_to_check None false false in
+      (not valid_target) && piece <> robber && piece <=  cMAX_PIECE_NUM && piece >= cMIN_PIECE_NUM
+  in
+  let gen_valid_move g rm : robbermove = 
+    (*pick random int 0-18 but it can't be where robber is now *)
+    let (p1, p2, p3, p4, board, turn, next) = g in 
+    let (map, structures, deck, discard, robber) = board in 
+    let rec gen_ran_not_n n = 
+      let result = Random.int cNUM_PIECES in 
+      if result = n then gen_ran_not_n n else result
+    in
+    let valid_placement = gen_ran_not_n robber in
+    (*let (hlist, plist) = map in *)
+    let (inters, roads) = structures in 
+    let corners = piece_corners valid_placement in
+    (*check corners, if there's a possible target (not yourself) pick them else none *)
+    let (current_player, num) = get_current_playerinfo g in 
+    let get_target ls : color option = 
+      let rec check_corners ls acc : color list = 
+	match ls with 
+	| [] -> acc
+	| hd::tl -> 
+	  match List.nth inters hd with 
+	  | Some(c,s) -> 
+	    if (get_player_color current_player) <> c then check_corners tl (c::acc) 
+	    else check_corners tl acc 
+	  | None -> check_corners tl acc 
+      in 
+      match check_corners corners [] with 
+      | [] -> None
+      | xs -> Some (fst (pick_one xs))
+    in
+    (valid_placement, (get_target corners) )
+  in 
+  let handle_valid_move g rm : game = failwith"notyet"
+    (* update the board to know about robber spot *) 
+    (* steal random resource from specific player *) 
+  in
+  if check_valid board rm then handle_valid_move g rm 
+  else let valid_rm = gen_valid_move g rm in handle_valid_move g valid_rm 
+    
+  
+
 
 
 let trade_response g tr : game = 
