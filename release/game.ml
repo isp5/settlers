@@ -4,7 +4,7 @@ open Util
 open Print
 
 (*the info relevant to each player *)
-type info = ((settlement*hex list) list)*road list
+type info = ((settlement*point*hex list) list)*road list
 
 (*the info relevant to each player *)
 type playerinfo = player*info
@@ -44,7 +44,7 @@ let rec get_intersections color ls acc coord hexList=
   | hd::tl -> 
     match hd with 
     | Some (c, s) -> 
-      if c = color then get_intersections color tl ((s,(get_hex_list (adjacent_pieces coord) [] hexList))::acc) (coord+1) hexList
+      if c = color then get_intersections color tl ((s,coord,(get_hex_list (adjacent_pieces coord) [] hexList))::acc) (coord+1) hexList
       else get_intersections color tl acc (coord+1) hexList
     | None -> get_intersections color tl acc (coord+1) hexList
 
