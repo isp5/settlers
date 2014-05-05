@@ -34,7 +34,7 @@ let rec replace_at_index el ls n =
   | hd::tl -> if n = 0 then el::tl else hd::replace_at_index el tl (n-1)
 
 
-let initial_move (g:game) line = 
+let initial_move (g:game) line : game = 
   let rec check_structures ps inters result acc : bool * point list =
     match ps with 
       [] -> result, acc
@@ -91,13 +91,27 @@ let initial_move (g:game) line =
   else (p1, p2, p3, (fst p4, new_info), new_board, turn, next)
 
 
-let robber_move g rm = failwith "here too"
+let robber_move g rm : game = failwith "here too"
+
+let get_player_hand pi = 
+  match (fst pi) with 
+  | _, h, _ -> h 
+
+let discard_move g cost : game = 
+  let current_player = get_current_playerinfo g in 
+  let check_valid_cost g cost : bool = 
+    let (inv, cards) = get_player_hand current_player in 
+    let sum = map_cost2 (-)  
+  let gen_valid_cost g cost : cost = in
+  let handle_cost g cost : game = in 
+  if not check_valid_cost g cost then 
+    let new_cost = gen_valid_cost g cost in
+    handle_cost g new_cost 
+  else handle_cost g cost 
+  
 
 
-let discard_move g dm = failwith "lol"
-
-
-let trade_response g tr = 
+let trade_response g tr : game = 
   if tr then failwith "handle the trade using info in turn"
   else failwith "handle the proper trade stuff here too -> maybe an action"
 
