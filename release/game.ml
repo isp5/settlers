@@ -83,7 +83,13 @@ let game_of_state s =
 let init_game () = game_of_state (gen_initial_state())
 
 
-let handle_move s m = failwith "If all the soul-and-body scars"
+let handle_move g m = 
+  match m with 
+  | InitialMove(line) -> None, Move.initial_move g line (*no one should ever win to start *)
+  | RobberMove(robbermove) -> failwith "not implemented"
+  | DiscardMove(cost) -> failwith "not implemented"
+  | TradeResponse(bool) -> failwith "not implemented" 
+  | Action(action) -> failwith "Action.handle_action g action "
 
 let presentation g = 
   let (p1, p2, p3, p4, b , t, n) = g in

@@ -1,7 +1,7 @@
 open Definition
 open Constant
 open Util
-open Game
+
 
 
 (*the info relevant to each player *)
@@ -34,7 +34,7 @@ let rec replace_at_index el ls n =
   | hd::tl -> if n = 0 then el::tl else hd::replace_at_index el tl (n-1)
 
 
-let initial_move (g:game) im = 
+let initial_move (g:game) line = 
   let rec check_structures ps inters result acc : bool * point list =
     match ps with 
       [] -> result, acc
@@ -52,8 +52,8 @@ let initial_move (g:game) im =
       if result then gen_valid_initial_move inters rest
       else point, (List.hd p2s) in  
 (*will check validity of initial move.  If move is invalid a valid move is returned *)
-  let initial_move_check (g:game) im = 
-    let (point1,point2) = im in 
+  let initial_move_check (g:game) line = 
+    let (point1,point2) = line in 
     let check_these =  adjacent_points point1 in 
     let (p1, p2, p3, p4, board, t, n ) = g in 
     let (map, structures, deck, discard, robber) = board in 
@@ -64,7 +64,7 @@ let initial_move (g:game) im =
       let (result, p2s) = check_structures check_these inters false [] in
       (if result then gen_valid_initial_move inters (range_list 0 53)
        else (point1, (List.hd p2s))) in
-  let (point1, point2) = initial_move_check g im in
+  let (point1, point2) = initial_move_check g line in
   (*make the move -> update game to reflect the move was made *)
   let (p1, p2, p3, p4, board, turn, next) = g in
   let ((hlist, plist), (inters, roads), deck, discard, robber) = board in
@@ -90,8 +90,6 @@ let initial_move (g:game) im =
   else if current_player = p3 then (p1, p2, (fst p3, new_info), p4, new_board, turn, next)
   else (p1, p2, p3, (fst p4, new_info), new_board, turn, next)
 
-  
-  
 
 let robber_move g rm = failwith "here too"
 
@@ -99,7 +97,8 @@ let robber_move g rm = failwith "here too"
 let discard_move g dm = failwith "lol"
 
 
-let trade_response g tr = failwith "haha"
+let trade_response g tr = 
+  if tr then failwith "handle the trade using info in turn"
+  else failwith "handle the proper trade stuff here too -> maybe an action"
 
 
-let action g a = failwith "probably won't keep this here"
