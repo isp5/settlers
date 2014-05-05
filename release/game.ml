@@ -58,7 +58,7 @@ let rec get_roads color ls acc =
       else get_roads c tl acc
 
 
-let associate_with_player p s hlst: ((settlement*hex list) list*road list) = 
+let associate_with_player p s hlst: ((settlement*point*hex list) list*road list) = 
   match p with 
   | c, _, _ -> 
     match s with 
