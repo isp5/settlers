@@ -102,27 +102,27 @@ let handle_move g m =
   | Action(action) -> failwith "Action.handle_action g action " (*can result in win*)
 
 let presentation g = 
-  let (p1, p2, p3, p4, b , t, n) = g in
+  let (p1, p2, p3, p4, (m,s,d,di,r) , t, n) = g in
   if get_player_color p1 = t.active then
     let np2 = hide_hand p2 in 
     let np3 = hide_hand p3 in 
     let np4 = hide_hand p4 in 
-    p1, np2, np3, np4, b, t, n
+    p1, np2, np3, np4, (m,s,(hide d), di, r), t, n
   else if get_player_color p2 = t.active then 
     let np1 = hide_hand p1 in 
     let np3 = hide_hand p3 in 
     let np4 = hide_hand p4 in 
-    np1, p2, np3, np4, b, t, n
+    np1, p2, np3, np4,(m,s,(hide d), di, r), t, n
   else if get_player_color p3 = t.active then 
     let np1 = hide_hand p1 in 
     let np2 = hide_hand p2 in 
     let np4 = hide_hand p4 in 
-    np1, np2, p3, np4, b, t, n
+    np1, np2, p3, np4,(m,s,(hide d), di, r), t, n
   else
     let np1 = hide_hand p1 in 
     let np2 = hide_hand p2 in 
     let np3 = hide_hand p3 in 
-    np1, np2, np3, p4, b, t, n
+    np1, np2, np3, p4,(m,s,(hide d), di, r), t, n
  
     
     
