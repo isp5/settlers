@@ -71,7 +71,7 @@ let rec initial_move g line : game =
     let rec range_list a b = if a > b then [] else a::(range_list (a+1) b) in
     if not (List.mem point2 check_these) 
     then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM) 
-    else if point1 < cMIN_POINT_NUM || point1 > cMAX_POINT_NUM || point2 < cMIN_POINT_NUM || point2 > cMAX_POINT_NUM then failwith "not here yet"
+    else if point1 < cMIN_POINT_NUM || point1 > cMAX_POINT_NUM || point2 < cMIN_POINT_NUM || point2 > cMAX_POINT_NUM then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM)
     else 
       let (result, p2s) = check_structures check_these inters false [] in
       (if result then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM)
