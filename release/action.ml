@@ -32,7 +32,7 @@ let remove_from_inventory ((c,(inv,cards),tr),(shLst,rLst)) cost =
 let num_resource_in_player ((c,(inv,cards),tr),(shLst,rLst)) res =
   num_resource_in_inventory inv res
 
-let handle_action g a:(game)=
+let handle_action g a:(color option*game)=
   (*all functionality necessary for the RollDice action*)
   let roll_dice  ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),b,t,n) = 
     let numRolled = random_roll ()in
@@ -237,12 +237,82 @@ let handle_action g a:(game)=
       | PlayYearOfPlenty(res,resOption) -> play_year_of_plenty game res resOption
       | PlayMonopoly(res) -> play_monopoly game res in
 
+  let calculate_victory ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),(map,(inters,rds),deck,discard,robber),t,n) =
+    let (pc1,(inv1,cards1),(k1,lr1,la1)),(shLst1,rLst1) = p1 in
+    let (pc2,(inv2,cards2),(k2,lr2,la2)),(shLst2,rLst2) = p2 in
+    let (pc3,(inv3,cards3),(k3,lr3,la3)),(shLst3,rLst3) = p3 in
+    let (pc4,(inv4,cards4),(k4,lr4,la4)),(shLst4,rLst4) = p4 in
+    let hasLA= 
+      match la1, la2, la3, la4 with
+        |true,false,false,false-> Some(k1,pc1)
+        |false,true,false,false-> Some(k2,pc2)
+        |false,false,true,false-> Some(k3,pc3)
+        |false,false,false,true-> Some(k4,pc4)
+        |false,false,false,false-> None
+        |_->failwith "multiple people have largest army trophy" in
+     let hasLR =
+      match lr1, lr2, lr3, lr4 with
+        |true,false,false,false-> Some((longest_road pc1 rLst1 inters),pc1)
+        |false,true,false,false-> Some((longest_road pc2 rLst2 inters),pc2)
+        |false,false,true,false-> Some((longest_road pc3 rLst3 inters),pc3)
+        |false,false,false,true-> Some((longest_road pc4 rLst4 inters),pc4)
+        |false,false,false,false-> None
+        |_->failwith "multiple people have longest road trophy" in
+    let check_longest_army p activeK =
+      let (pc,(inv,cards),(k,lr,la)),(shLst,rLst) = p in
+      let kT,cT = get_some hasLA in
+      if is_none hasLA then (if k >= cMIN_LARGEST_ARMY then (pc,(inv,cards),(k,lr,true)),(shLst,rLst) else p)
+      else if k > kT then (pc,(inv,cards),(k,lr,true)),(shLst,rLst) 
+      else if pc = cT && k<activeK then (pc,(inv,cards),(k,lr,false)),(shLst,rLst) else p in
+      
+    let check_longest_road p activeRd =
+      let (pc,(inv,cards),(k,lr,la)),(shLst,rLst) = p in
+      let laT,cT = get_some hasLR in
+      let myLR = longest_road pc rLst inters in
+      if is_none hasLR then (if  myLR >= cMIN_LONGEST_ROAD then (pc,(inv,cards),(k,true,la)),(shLst,rLst) else p)
+      else if myLR > laT then (pc,(inv,cards),(k,lr,true)),(shLst,rLst)
+      else if pc = cT && myLR<activeRd then (pc,(inv,cards),(k,false,la)),(shLst,rLst) else p in
+      
+    let calculate_player_victory_pts player =
+      let (pc,(inv,cards),(k,lr,la)),(shLst,rLst) = player in
+      let rec settlement_vpoints sList res=
+        let pts s = match s with Town -> cVP_TOWN | City -> cVP_CITY in
+        match sList with
+          |(s,p,h)::tl -> settlement_vpoints tl ((pts s)+res)
+          |[]->res in
+      let rec cards_vpionts crds res = 
+        match crds with
+         |hd::tl ->(
+           match hd with
+             |VictoryPoint-> cards_vpionts tl (res+cNUM_VICTORYPOINT)
+             |_-> cards_vpionts tl res)
+         |[]->res in
+      let trophy_vpoints = 
+        if lr && la then (cVP_LONGEST_ROAD + cVP_LARGEST_ARMY)
+        else if lr then cVP_LARGEST_ARMY
+        else if la then cVP_LONGEST_ROAD
+        else 0 in
+      if ((settlement_vpoints shLst 0) + (cards_vpionts (reveal cards) 0) + trophy_vpoints) >= cWIN_CONDITION
+      then Some(pc)
+      else None in
+    let np1 = check_longest_road (check_longest_army p1 k1) (longest_road pc1 rLst1 inters) in
+    let np2 = check_longest_road (check_longest_army p2 k2) (longest_road pc2 rLst2 inters) in
+    let np3 = check_longest_road (check_longest_army p3 k3) (longest_road pc3 rLst3 inters) in
+    let np4 = check_longest_road (check_longest_army p4 k4) (longest_road pc4 rLst4 inters) in
+    let game = (np1,np2,np3,np4,(map,(inters,rds),deck,discard,robber),t,n) in
+    match (pc1 = t.active,pc2 = t.active,pc3 = t.active,pc4 = t.active) with
+      |true,false,false,false-> (calculate_player_victory_pts np1),game
+      |false,true,false,false-> (calculate_player_victory_pts np2),game
+      |false,false,true,false-> (calculate_player_victory_pts np3),game
+      |false,false,false,true-> (calculate_player_victory_pts np4),game 
+      |_-> failwith "No active player" in
+
   match a with
-    | RollDice -> roll_dice g
-    | MaritimeTrade(mt) -> maritime_trade_action g mt
-    | DomesticTrade(dt) -> domestic_trade_action g dt
-    | BuyBuild(b) -> build_action g b
+    | RollDice -> calculate_victory (roll_dice g)
+    | MaritimeTrade(mt) -> calculate_victory (maritime_trade_action g mt)
+    | DomesticTrade(dt) -> calculate_victory (domestic_trade_action g dt)
+    | BuyBuild(b) -> calculate_victory (build_action g b)
     | PlayCard(pc) ->(
       let valid,game = valid_card g (card_of_playcard pc) in
-      if valid then play_card_action game pc else end_turn game)
-    | EndTurn -> end_turn g
+      if valid then calculate_victory (play_card_action game pc) else calculate_victory (end_turn game))
+    | EndTurn -> calculate_victory (end_turn g)
