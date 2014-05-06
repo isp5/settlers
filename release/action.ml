@@ -208,24 +208,32 @@ let handle_action g a:(game)=
   let play_knight ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),b,t,n) (piece,colOpt) resCost=
     let game = (p1,p2,p3,p4,b,t,n) in
     let (hxLst,portList),(inters,rds),deck,discard,robber = b in
-    let validColor,colorsToSteal =  check_target (piece_corners piece) inters colOpt false false in
+    let (validColor,colorsToSteal) =  check_target (piece_corners piece) inters colOpt t.active false false in
+    let increment_knights ((pc,(inv,cards),(k,lr,la)),(shLst,rLst)) = (pc,(inv,cards),((k+1),lr,la)),(shLst,rLst) in
     let steal player = 
       let (pc,(inv,cards),tr),(shLst,rLst) = player in
-      if pc = t.active then add_to_inventory player resCost
-      else if (not is_none colOpt) then get_some
-    let np1 = compute_inv p1 in
-    let np2 = compute_inv p2 in
-    let np3 = compute_inv p3 in
-    let np4 = compute_inv p4 in
+      if pc = t.active then increment_knights (add_to_inventory player resCost)
+      else if is_none colOpt then player 
+      else if pc = (get_some colOpt) then remove_from_inventory player resCost
+      else player in
+    let np1 = steal p1 in
+    let np2 = steal p2 in
+    let np3 = steal p3 in
+    let np4 = steal p4 in
+    (* need to figure out how to factor my color into this*)
+    let new_board = (hxLst,portList),(inters,rds),deck,discard,piece in
     if piece <= cMAX_PIECE_NUM && piece >= cMIN_PIECE_NUM
-    then (if validColor || (is_none colOpt && colorsToSteal) then (p1,p2,p3,p4,b,t,n)
-    else end_turn game
+    then (if validColor || (is_none colOpt && not colorsToSteal) then (np1,np2,np3,np4,new_board,t,n) else end_turn game)
+    else end_turn game in
 
+  let play_road_building ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),b,t,n) rd1 rdOption =
+    let game = (p1,p2,p3,p4,b,t,n) in
+    end_turn game in
 
   let play_card_action game playedCard =
     match playedCard with
-      | PlayKnight(robMove) -> play_knight game robMove (pick_one resource_list)
-      | PlayRoadBuilding(rd,rdOption) -> failwith "not implemented"
+      | PlayKnight(robMove) -> play_knight game robMove (fst(pick_one resource_list))
+      | PlayRoadBuilding(rd,rdOption) -> play_road_building game rd rdOption
       | PlayYearOfPlenty(res,resOption) -> play_year_of_plenty game res resOption
       | PlayMonopoly(res) -> play_monopoly game res in
 
