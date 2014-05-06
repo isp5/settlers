@@ -98,7 +98,7 @@ let handle_move g m =
     else None, Move.discard_move g (0,0,0,0,0)
   | TradeResponse(bool) ->
     if request = TradeRequest then None, Move.trade_response g bool (*shouldn't result in win*)
-    else None, Move.discard_move g (0,0,0,0,0)
+    else None, Move.discard_move g (0,0,0,0,0) (*need to come up with better result *)
   | Action(action) -> failwith "Action.handle_action g action " (*can result in win*)
 
 let presentation g = 
