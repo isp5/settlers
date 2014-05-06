@@ -54,6 +54,25 @@ let handle_action g a:(game)=
         if r = cROBBER_ROLL 
         then robber_roll (p1,p2,p3,p4,b,(modify_turn t r),n) 
         else ((p1_info r),(p2_info r),(p3_info r),(p4_info) r,b,(modify_turn t r),n)) in
+
+  (*all functionality necessary for the EndTurn action*)
+  let end_turn ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),b,t,(nCol,req)) =
+    let rec new_hand hand newCards =
+      match (reveal newCards) with 
+        |hd::tl->  new_hand (append_card hand hd) (wrap_reveal tl)
+        |[]-> hand in
+    let apply_new_hand ((pc,(inv,cards),t),(shLst,rLst)) c newCards = 
+      if pc = c 
+      then ((pc,(inv,(new_hand cards newCards)),t),(shLst,rLst)) 
+      else ((pc,(inv,cards),t),(shLst,rLst)) in
+    let np1 = apply_new_hand p1 t.active t.cardsbought in
+    let np2 = apply_new_hand p2 t.active t.cardsbought in
+    let np3 = apply_new_hand p3 t.active t.cardsbought in
+    let np4 = apply_new_hand p4 t.active t.cardsbought in
+    let newTurn = new_turn (next_turn t.active) in
+    let newN = (next_turn t.active,req) in
+    let game = (p1,p2,p3,p4,b,t,(nCol,req)) in
+    if is_none t.dicerolled then roll_dice game else (np1,np2,np3,np4,b,newTurn,newN) in
   
   (*all functionality necessary for the maritime trade action*)
   let maritime_trade_action ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),((hxLst,portList),s,deck,discard,robber),t,n) (sold, bought)= 
@@ -73,21 +92,50 @@ let handle_action g a:(game)=
     let compute_inv inv ratio= 
       let enough_resources = num_resource_in_inventory inv sold > ratio in
       if enough_resources 
-      then map_cost2 (fun x y -> x+y) (single_resource_cost bought) (map_cost2 (fun x y -> x-y) inv (many_of_one_resource_cost sold ratio))
-      else inv in
+      then Some(map_cost2 (fun x y -> x+y) (single_resource_cost bought) (map_cost2 (fun x y -> x-y) inv (many_of_one_resource_cost sold ratio)))
+      else None in
     let apply_mtrade ((pc,(inv,cards),t),(shLst,rLst)) c =
         if pc = c
-        then ((pc,((compute_inv inv (exchange_rate shLst cMARITIME_DEFAULT_RATIO)),cards),t),(shLst,rLst))
-        else ((pc,(inv,cards),t),(shLst,rLst)) in
+        then (
+          match compute_inv inv (exchange_rate shLst cMARITIME_DEFAULT_RATIO) with
+            |Some(newInv)->Some((pc,(newInv,cards),t),(shLst,rLst))
+            |None -> None)
+        else Some((pc,(inv,cards),t),(shLst,rLst)) in
     let np1 = apply_mtrade p1 t.active in
     let np2 = apply_mtrade p2 t.active in
     let np3 = apply_mtrade p3 t.active in
     let np4 = apply_mtrade p4 t.active in
-    (np1,np2,np3,np4,((hxLst,portList),s,deck,discard,robber),t,n) in
+    let game = (p1,p2,p3,p4,((hxLst,portList),s,deck,discard,robber),t,n) in
+    match (np1,np2,np3,np4) with
+      |Some(a1),Some(a2),Some(a3),Some(a4)->(a1,a2,a3,a4,((hxLst,portList),s,deck,discard,robber),t,n) 
+      |_-> end_turn game in
 
   (*all functionality necessary for the domestic trade action*)
-  let domestic_trade_action ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),b,t,(nCol,req)) dt= 
-    failwith "not implementd" in
+  let domestic_trade_action ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),b,t,(nCol,req)) (color,give,ask)= 
+    let compute_trade ((pc,(inv,cards),t),(shLst,rLst)) cActive cTrade =
+      let greater_then_zero (b,w,o,g,l) = b>=0 && w>=0 && o>=0 && g>=0 && l>=0 in
+      let a_enough_resources = greater_then_zero (map_cost2 (fun x y -> x-y) inv give) in
+      let t_enough_resources = greater_then_zero (map_cost2 (fun x y -> x-y) inv ask) in
+      match (pc = cActive, pc = cTrade) with
+        |(true,false)-> (
+          if a_enough_resources then Some(give) else None)
+        |(false,true)->(
+          if t_enough_resources then Some(ask) else None)
+        |(false,false) -> None
+        |(true, true) -> None in
+    let modify_turn turn = {turn with pendingtrade = Some(color,give,ask)} in
+    let rec choose_players pList cActive (pGive, pAsk) = 
+      match pList with
+        |((pc,(inv,cards),t),(shLst,rLst))::tl->(
+          let player = ((pc,(inv,cards),t),(shLst,rLst)) in
+          if pc = cActive then choose_players tl cActive (player,pAsk) else(
+            if pc = color then choose_players tl cActive (pGive,player) else choose_players tl cActive (pGive,pAsk)))
+        |[]-> (pGive,pGive) in
+    let tGive,tAsk = choose_players (p1::p2::p3::[p4]) t.active (p1,p1) in
+    let game = (p1,p2,p3,p4,b,t,(nCol,req)) in
+    match (compute_trade tGive t.active color),(compute_trade tAsk t.active color) with
+      |Some(gp),Some(ap)->(p1,p2,p3,p4,b,(modify_turn t),(color,TradeRequest)) 
+      |_-> end_turn game in
 
   (*all functionality necessary for the build action*)
   let build_action ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),b,t,n) b= 
@@ -105,25 +153,6 @@ let handle_action g a:(game)=
       | PlayRoadBuilding(rd,None) -> failwith "not implemented"
       | PlayYearOfPlenty(res,None) -> failwith "not implemented"
       | PlayMonopoly(res) -> failwith "not implemented" in
-
-  (*all functionality necessary for the EndTurn action*)
-  let end_turn ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),b,t,(nCol,req)) =
-    let rec new_hand hand newCards =
-      match (reveal newCards) with 
-        |hd::tl->  new_hand (append_card hand hd) (wrap_reveal tl)
-        |[]-> hand in
-    let apply_new_hand ((pc,(inv,cards),t),(shLst,rLst)) c newCards = 
-      if pc = c 
-      then ((pc,(inv,(new_hand cards newCards)),t),(shLst,rLst)) 
-      else ((pc,(inv,cards),t),(shLst,rLst)) in
-    let np1 = apply_new_hand p1 t.active t.cardsbought in
-    let np2 = apply_new_hand p2 t.active t.cardsbought in
-    let np3 = apply_new_hand p3 t.active t.cardsbought in
-    let np4 = apply_new_hand p4 t.active t.cardsbought in
-    let newTurn = new_turn (next_turn t.active) in
-    let newN = (next_turn t.active,req) in
-    (np1,np2,np3,np4,b,newTurn,newN) in
-    
 
   match a with
     | RollDice -> roll_dice g
