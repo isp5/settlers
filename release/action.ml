@@ -12,17 +12,6 @@ type playerinfo = player*info
 (*Information for each player, then the rest of the board in structures then turn and next like state *)
 type game = playerinfo*playerinfo*playerinfo*playerinfo*board*turn*next
 
-(** Returns a cost where there is one of the resource specified, and zero of all others *)
-let many_of_one_resource_cost (resource : resource) num: cost = 
-  match resource with
-    | Brick ->  ((1*num),0,0,0,0)
-    | Wool ->   (0,(1*num),0,0,0)
-    | Ore ->    (0,0,(1*num),0,0)
-    | Grain ->  (0,0,0,(1*num),0)
-    | Lumber -> (0,0,0,0,(1*num))
-
-let resource_list = [(1,0,0,0,0);(0,1,0,0,0);(0,0,1,0,0);(0,0,0,1,0);(0,0,0,0,1)]
-
 let add_to_inventory ((c,(inv,cards),tr),(shLst,rLst)) cost =
   ((c,((map_cost2 (fun x y -> x+y) inv cost),cards),tr),(shLst,rLst))
 
@@ -32,9 +21,8 @@ let remove_from_inventory ((c,(inv,cards),tr),(shLst,rLst)) cost =
 let num_resource_in_player ((c,(inv,cards),tr),(shLst,rLst)) res =
   num_resource_in_inventory inv res
 
-let handle_action g a:(color option*game)=
-  (*all functionality necessary for the RollDice action*)
-  let roll_dice  ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),b,t,n) = 
+(*all functionality for roll dice action *)
+let roll_dice  ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),b,t,n) = 
     let numRolled = random_roll ()in
     let rec add_resources invT setAndHexLst dRoll =
       let rec resources_to_add s hList (b,w,o,g,l) dR =
@@ -64,9 +52,9 @@ let handle_action g a:(color option*game)=
       | r -> (
         if r = cROBBER_ROLL 
         then robber_roll (p1,p2,p3,p4,b,(modify_turn t r),n) 
-        else ((p1_info r),(p2_info r),(p3_info r),(p4_info) r,b,(modify_turn t r),(t.active, ActionRequest))) in
+        else ((p1_info r),(p2_info r),(p3_info r),(p4_info) r,b,(modify_turn t r),(t.active, ActionRequest)))
 
-  (*all functionality necessary for the EndTurn action*)
+(*all functionality necessary for the EndTurn action*)
   let end_turn ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),b,t,(nCol,req)) =
     let rec new_hand hand newCards =
       match (reveal newCards) with 
@@ -83,8 +71,235 @@ let handle_action g a:(color option*game)=
     let newTurn = new_turn (next_turn t.active) in
     let newN = (next_turn t.active,ActionRequest) in
     let game = (p1,p2,p3,p4,b,t,(nCol,req)) in
-    if is_none t.dicerolled then roll_dice game else (np1,np2,np3,np4,b,newTurn,newN) in
+    if is_none t.dicerolled then roll_dice game else (np1,np2,np3,np4,b,newTurn,newN)
+
+let rec check_structures ps inters result acc : bool * point list =
+    match ps with 
+      [] -> result, acc
+    | hd::tl -> 
+      match List.nth inters hd with 
+      | Some _ -> check_structures tl inters (result || true) acc
+      | None -> check_structures tl inters (result || false) (hd::acc)
+
+let rec get_hex_list points acc hexList=
+    match points with
+      |hd::tl -> get_hex_list tl ((List.nth hexList hd)::acc) hexList
+      |[]-> acc
+
+let get_player_color pi = 
+  match (fst pi) with 
+  | c,_,_ -> c
+
+let get_player_hand pi = 
+  match (fst pi) with 
+  | _, h, _ -> h 
+
+let get_current_playerinfo (g:game)  = 
+  let (p1, p2, p3, p4, board, turn, next) = g in 
+  let color = turn.active in 
+  if get_player_color p1 = color then (p1, 1) 
+  else if get_player_color p2 = color then (p2, 2)
+  else if get_player_color p3 = color then (p3, 3)
+  else (p4, 4) 
+
+let get_player_by_color g color = 
+  match g with 
+  | (p1, p2, p3, p4, _, _, _) -> 
+    if get_player_color p1 = color then (p1, 1) 
+    else if get_player_color p2 = color then (p2, 2)
+    else if get_player_color p3 = color then (p3, 3) 
+    else (p4, 4)
+
+(*replaces the nth element with el in ls. If n is larger than Length of ls then el is placed at end *)
+let rec replace_at_index el ls n = 
+  match ls with 
+  | [] -> [el]
+  | hd::tl -> if n = 0 then el::tl else hd::replace_at_index el tl (n-1)
+
+let can_afford inv cost : bool = 
+  let left = map_cost2 (-) cost inv in 
+  match left with 
+  | (b, w, o, l, g) -> 
+    b >=0 && w >= 0 && o >=0 && l >= 0 && g >= 0
+
+let road_to_here pt pi : bool = 
+  let rec loop (ls:road list) (pt:point) result : bool = 
+    match ls with 
+    | [] -> result
+    | hd::tl -> 
+      match hd with 
+      | color, (pt1, pt2) -> 
+	if pt1 = pt || pt2 = pt then loop tl pt (true || result)
+	else loop tl pt (false || result) 
+  in 	  
+  match pi with 
+  | player, (sphl, rl) -> loop rl pt false
+
+let rec road_already line (roads:road list) result : bool = 
+  let (pt1, pt2) = line in 
+  let rev_line = (pt2, pt1) in 
+  match roads with 
+  | [] -> result
+  | (color, l)::tl -> 
+    if line = l  || rev_line = l then road_already line tl (true || result)
+    else road_already line tl (false || result)
+     
+let enemy_settlement_at_point (pt:point) (my_color:color) inters : bool = 
+  match List.nth inters pt with 
+  | None -> false
+  | Some(c, s) -> (not (c = my_color))
+
+let check_adjacent r : bool =  
+  let (color,(pt1, pt2)) = r in 
+  List.mem pt2 (adjacent_points pt1)
+
+let get_total_towns sphl : int = 
+  let rec loop ls acc = 
+    match ls with 
+      [] -> acc 
+    | (Town, _, _)::tl  -> loop tl (acc+1)
+    | _::tl -> loop tl acc
+  in 
+  loop sphl 0 
+
+let get_total_cities sphl : int = 
+  let rec loop ls acc = 
+    match ls with 
+      [] -> acc 
+    | (City, _, _)::tl  -> loop tl (acc+1)
+    | _::tl -> loop tl acc
+  in
+  loop sphl 0
+
+let can_build (b:build) g : bool =
+  let (pi,num) = get_current_playerinfo g in 
+  let (p1, p2, p3, p4, (m, s, deck, d, r), t, n) = g in
+  let (player, (sphl, rl)) = pi in 
+  match b with 
+  | BuildRoad(_) -> (List.length rl <  cMAX_ROADS_PER_PLAYER)
+  | BuildTown(_) -> (get_total_towns sphl < cMAX_TOWNS_PER_PLAYER)
+  | BuildCity(_) -> (get_total_cities sphl < cMAX_CITIES_PER_PLAYER)
+  | BuildCard -> 
+    match deck with 
+    | Hidden(i) -> (i > 0)
+    | Reveal(cl) -> (List.length cl > 0)
   
+
+let build_road b r g cost : game = 
+  let (p1, p2, p3, p4, (map, (inters, roads), deck, discard, robber), t, n) = g in 
+  let (current_player, num) = get_player_by_color g (t.active) in
+  let (inv, cards) = get_player_hand current_player in 
+  let (color, line) = r in 
+  let (pt1, pt2) = line in 
+  let handle_build cost =
+    let inter_pi = remove_from_inventory current_player cost in 
+    let (player, (sphl, rl)) = inter_pi in 
+    let new_player_info = (player, (sphl, r::rl)) in 
+    let new_board = (map, (inters, r::roads), deck, discard, robber) in 
+    if num = 1 then (new_player_info, p2, p3, p4, new_board, t, (t.active, ActionRequest)) 
+    else if num = 2 then (p1, new_player_info, p3, p4, new_board, t, (t.active, ActionRequest))
+    else if num = 3 then (p1, p2, new_player_info, p4, new_board, t, (t.active, ActionRequest))
+    else (p1, p2, p3, new_player_info, new_board, t, (t.active, ActionRequest))
+  in
+  if (can_afford inv cost) && (check_adjacent r) && (not (enemy_settlement_at_point pt1 (t.active) inters)) 
+    && (not (road_already line roads false)) && (road_to_here pt1 current_player) && can_build b g 
+  then handle_build cost 
+  else failwith "end turn stuff" 
+  
+
+let build_town b pt (g:game) : game = 
+  let (p1, p2, p3, p4, ((hlist, plist), (inters, roads), deck, discard, robber), t, n) = g in 
+  let (current_player, num) = get_player_by_color g (t.active) in
+  let (inv, cards) = get_player_hand current_player in 
+  let handle_build pt = 
+    let inter_pi = remove_from_inventory current_player cCOST_TOWN in
+    let (player, (sphl,rl)) = inter_pi in 
+    let rec get_hex_list points acc hexList=
+      match points with
+      |hd::tl -> get_hex_list tl ((List.nth hexList hd)::acc) hexList
+      |[]-> acc
+    in
+    let hexpoints = adjacent_pieces pt in
+    let hexes = get_hex_list hexpoints [] hlist in 
+    let new_inter = Some(get_player_color inter_pi, Town) in
+    let new_playerinfo = (player, (((Town, pt, hexes)::sphl), rl)) in
+    let new_inter_list = replace_at_index new_inter inters pt in
+    let new_board = ((hlist, plist), (new_inter_list, roads), deck, discard, robber) in 
+    if num = 1 then (new_playerinfo, p2, p3, p4, new_board, t, (t.active, ActionRequest))
+    else if num = 2 then (p1, new_playerinfo, p3, p4, new_board, t, (t.active, ActionRequest))
+    else if num = 3 then (p1, p2, new_playerinfo, p4, new_board, t, (t.active, ActionRequest))
+    else (p1, p2, p3, new_playerinfo, new_board, t, (t.active, ActionRequest))
+  in
+  if (can_afford inv cCOST_TOWN) && (not (fst (check_structures (adjacent_points pt) inters false [])))
+    && (can_build b g) && (road_to_here pt current_player )
+  then handle_build pt
+  else failwith "end turn stuff" 
+
+let check_if_town color inters pt : bool = 
+  match List.nth inters pt with 
+  | Some(c, Town) -> (c = color)
+  | _ -> false
+ 
+let build_city b pt g : game = 
+  let (p1, p2, p3, p4, ((hlist, plist), (inters, roads), deck, discard, robber), t, n) = g in 
+  let (current_player, num) = get_player_by_color g (t.active) in
+  let (inv, cards) = get_player_hand current_player in 
+  let handle_build pt = 
+    let inter_pi = remove_from_inventory current_player cCOST_CITY in
+    let (player, (sphl,rl)) = inter_pi in  
+    let rec upgrade pt sphl acc= 
+      match sphl with 
+      | [] -> acc
+      | (s, p, hl)::tl -> if p = pt then upgrade pt tl ((City,pt,hl)::acc) else upgrade pt tl ((s,p,hl)::acc)
+    in 
+    let new_inter = Some(get_player_color inter_pi, City) in
+    let new_playerinfo = (player, ((upgrade pt sphl []), rl)) in
+    let new_inter_list = replace_at_index new_inter inters pt in
+    let new_board = ((hlist, plist), (new_inter_list, roads), deck, discard, robber) in 
+    if num = 1 then (new_playerinfo, p2, p3, p4, new_board, t, (t.active, ActionRequest))
+    else if num = 2 then (p1, new_playerinfo, p3, p4, new_board, t, (t.active, ActionRequest))
+    else if num = 3 then (p1, p2, new_playerinfo, p4, new_board, t, (t.active, ActionRequest))
+    else (p1, p2, p3, new_playerinfo, new_board, t, (t.active, ActionRequest))
+  in
+  if (can_afford inv cCOST_CITY) && (check_if_town (t.active) inters pt) && (can_build b g) 
+  then handle_build pt
+  else failwith "end turn stuff" 
+ 
+let build_card b g : game = 
+  let (p1, p2, p3, p4, (map, s, deck, discard, robber), t, n) = g in 
+  let (current_player, num) = get_player_by_color g (t.active) in
+  let (inv, cards) = get_player_hand current_player in 
+  if (can_afford inv cCOST_CARD) && (can_build b g) 
+  then (
+    let inter_pi = remove_from_inventory current_player cCOST_CARD in
+    match deck with 
+    | Reveal(cs) -> 
+      let (card, rest) = pick_one cs in 
+      let cardsb = (reveal t.cardsbought) in 
+      let updated_turn = { t with cardsbought = (wrap_reveal(card::cardsb)) } in
+      let new_board = (map, s, (wrap_reveal rest), discard, robber) in 
+      if num = 1 then (inter_pi, p2, p3, p4, new_board, updated_turn, (t.active, ActionRequest))
+      else if num = 2 then (p1, inter_pi, p3, p4, new_board, updated_turn, (t.active, ActionRequest))
+      else if num = 3 then (p1, p2, inter_pi, p4, new_board, updated_turn, (t.active, ActionRequest))
+      else (p1, p2, p3, inter_pi, new_board, updated_turn, (t.active, ActionRequest))
+    | Hidden(i) -> failwith "shouldn't be hidden?" )
+  else failwith "end turn stuff"
+
+
+(** Returns a cost where there is one of the resource specified, and zero of all others *)
+let many_of_one_resource_cost (resource : resource) num: cost = 
+  match resource with
+    | Brick ->  ((1*num),0,0,0,0)
+    | Wool ->   (0,(1*num),0,0,0)
+    | Ore ->    (0,0,(1*num),0,0)
+    | Grain ->  (0,0,0,(1*num),0)
+    | Lumber -> (0,0,0,0,(1*num))
+
+let resource_list = [(1,0,0,0,0);(0,1,0,0,0);(0,0,1,0,0);(0,0,0,1,0);(0,0,0,0,1)]
+
+
+
+let handle_action g a:(color option*game)=
   (*all functionality necessary for the maritime trade action*)
   let maritime_trade_action ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),((hxLst,portList),s,deck,discard,robber),t,n) (sold, bought)= 
     let rec is_port pt pLst=
@@ -151,12 +366,13 @@ let handle_action g a:(color option*game)=
     else end_turn game in
 
   (*all functionality necessary for the build action*)
-  let build_action ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),b,t,n) b= 
+  let build_action g b = 
     match b with
-      | BuildRoad(r) -> failwith "not implemented"
-      | BuildTown(pt) -> failwith "not implemented"
-      | BuildCity(pt) -> failwith "not implemented"
-      | BuildCard -> failwith "not implemented" in
+     | BuildRoad(r) -> build_road b r g cCOST_ROAD
+     | BuildTown(pt) -> build_town b pt g
+     | BuildCity(pt) -> build_city b pt g
+     | BuildCard -> build_card b g
+  in
 
   let valid_card ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),((hxLst,portList),s,deck,discard,robber),t,n) myCard= 
         let compute_hand hand card =
