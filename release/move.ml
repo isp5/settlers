@@ -13,7 +13,6 @@ type playerinfo = player*info
 (*Information for each player, then the rest of the board in structures then turn and next like state *)
 type game = playerinfo*playerinfo*playerinfo*playerinfo*board*turn*next
 
-
 let get_player_color pi = 
   match (fst pi) with 
   | c,_,_ -> c
@@ -70,7 +69,9 @@ let rec initial_move g line : game =
     let (map, structures, deck, discard, robber) = board in 
     let (inters, roads) = structures in
     let rec range_list a b = if a > b then [] else a::(range_list (a+1) b) in
-    if not (List.mem point2 check_these) then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM) 
+    if not (List.mem point2 check_these) 
+    then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM) 
+    else if point1 < cMIN_POINT_NUM || point1 > cMAX_POINT_NUM || point2 < cMIN_POINT_NUM || point2 > cMAX_POINT_NUM then failwith "not here yet"
     else 
       let (result, p2s) = check_structures check_these inters false [] in
       (if result then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM)
@@ -96,7 +97,7 @@ let rec initial_move g line : game =
   (* replace the right element of inters with the new value *) 
   let new_inters = replace_at_index new_town inters point1 in 
   let new_board = ((hlist, plist), (new_inters, (new_road::roads)), deck, discard, robber) in 
-  (* p1 p2 p3 p4 p4 p3 p2 p1 *)
+  (* blue red orange white white orange red blue *)
   let (color, req) = next in 
   let ((player,(structures, roads)),ind) = (get_player_by_color g White) in
   let has_no_structures = (structures = []) in 
@@ -172,7 +173,7 @@ let discard_move g cost : game =
     handle_cost g new_cost 
   else handle_cost g cost 
   
- let rec check_target ls inters color result1 result2 : (bool*bool) = 
+ let rec check_target ls inters color my_color result1 result2 : (bool*bool) = 
       match ls with 
       | [] -> result1, result2
       | hd::tl -> 
@@ -180,15 +181,19 @@ let discard_move g cost : game =
 	| Some (c,s) -> begin
 	  match color with 
 	  | Some col -> 
-	    if c = col then check_target tl inters color (true || result1) (true || result2)  
-	    else check_target tl inters color (false || result1) (true || result2)
-	  | None -> check_target tl inters color (false || result1) (true || result2)
+	    if c = col then check_target tl inters color my_color (true || result1) (true || result2)  
+	    else if c = my_color then check_target tl inters color my_color (false || result1) (false || result2)
+	    else check_target tl inters color my_color (false || result1) (true || result2)
+	  | None -> 
+	    if c = my_color then check_target tl inters color my_color (false || result1) (false || result2)
+	    else check_target tl inters color my_color (false || result1) (true || result2)
 	end 
-	| None -> check_target tl inters color (false || result1) (false || result2)
+	| None -> check_target tl inters color my_color (false || result1) (false || result2)
     
 
 let robber_move g rm : game = 
   let (p1, p2, p3, p4, board, turn, next) = g in 
+  let current_color = get_player_color (fst (get_current_playerinfo g)) in 
   let check_valid board rm : bool = 
     let (piece, target) = rm in 
     let (map, structures, deck, discard, robber) = board in 
@@ -197,10 +202,10 @@ let robber_move g rm : game =
     (*piece must be on board and not where robber is currently and target (or lack of) must be valid *) 
     match target with 
     | Some color -> 
-      let (right_target, valid_target) = check_target points_to_check inters (Some(color)) false false in
+      let (right_target, valid_target) = check_target points_to_check inters (Some(color)) current_color false false in
       right_target && piece <> robber && piece <=  cMAX_PIECE_NUM && piece >= cMIN_PIECE_NUM 
     | None -> 
-      let (right_target, valid_target) = check_target points_to_check inters None false false in
+      let (right_target, valid_target) = check_target points_to_check inters None current_color false false in
       (not valid_target) && piece <> robber && piece <=  cMAX_PIECE_NUM && piece >= cMIN_PIECE_NUM
   in
   let gen_valid_move g rm : robbermove = 
