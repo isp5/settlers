@@ -45,7 +45,7 @@ let rec replace_at_index el ls n =
   | hd::tl -> if n = 0 then el::tl else hd::replace_at_index el tl (n-1)
 
 
-let initial_move (g:game) line : game = 
+let rec initial_move g line : game = 
   let rec check_structures ps inters result acc : bool * point list =
     match ps with 
       [] -> result, acc
@@ -96,10 +96,20 @@ let initial_move (g:game) line : game =
   (* replace the right element of inters with the new value *) 
   let new_inters = replace_at_index new_town inters point1 in 
   let new_board = ((hlist, plist), (new_inters, (new_road::roads)), deck, discard, robber) in 
-  if num = 1 then ((fst p1, new_info), p2, p3, p4, new_board, turn, next)
-  else if num = 2 then (p1, (fst p2, new_info), p3, p4, new_board, turn, next)
-  else if num = 3 then (p1, p2, (fst p3, new_info), p4, new_board, turn, next)
-  else (p1, p2, p3, (fst p4, new_info), new_board, turn, next)
+  (* p1 p2 p3 p4 p4 p3 p2 p1 *)
+  let (color, req) = next in 
+  let ((player,(structures, roads)),ind) = (get_player_by_color g White) in
+  let has_no_structures = (structures = []) in 
+  let next_color = 
+    if color = White && has_no_structures then White 
+    else if color = White && (not has_no_structures) then prev_turn color 
+    else next_turn color in
+  let looped = (not has_no_structures) && (turn.active = color) in
+  let next_request = if looped then (turn.active, ActionRequest) else (next_color, InitialRequest) in 
+  if num = 1 then ((fst p1, new_info), p2, p3, p4, new_board, turn, next_request)
+  else if num = 2 then (p1, (fst p2, new_info), p3, p4, new_board, turn, next_request)
+  else if num = 3 then (p1, p2, (fst p3, new_info), p4, new_board, turn, next_request)
+  else (p1, p2, p3, (fst p4, new_info), new_board, turn, next_request)
 
 let rec make_list c n acc = 
 	match n with 
@@ -148,10 +158,13 @@ let discard_move g cost : game =
     let new_inv = map_cost2 (-) inv cost in
     let (color, hand, trophies) = fst current_player in 
     let updated_hand = (new_inv, snd hand) in 
-    if num = 1 then (((color,updated_hand, trophies), snd current_player), p2, p3, p4, b, t, n) 
-    else if num = 2 then (p1, ((color, updated_hand, trophies), snd current_player), p3, p4, b, t, n)
-    else if num = 3 then (p1, p2, ((color, updated_hand, trophies), snd current_player), p4, b, t, n)
-    else (p1, p2, p3, ((color, updated_hand, trophies), snd current_player), b, t, n) 
+    let (color, req) = n in 
+    let looped = ((color,req) = ((next_turn t.active),DiscardRequest)) in 
+    let next = if looped then (t.active,ActionRequest) else (next_turn t.active, DiscardRequest) in
+    if num = 1 then (((color,updated_hand, trophies), snd current_player), p2, p3, p4, b, t, next) 
+    else if num = 2 then (p1, ((color, updated_hand, trophies), snd current_player), p3, p4, b, t, next)
+    else if num = 3 then (p1, p2, ((color, updated_hand, trophies), snd current_player), p4, b, t, next)
+    else (p1, p2, p3, ((color, updated_hand, trophies), snd current_player), b, t, next) 
   in 
   let (inv, cards) = get_player_hand current_player in 
   if not (check_valid_cost g cost) then 
@@ -251,19 +264,20 @@ let robber_move g rm : game =
       let (player2, hand2, t2) = fst target_player in 
       let new_p1 = ((player1, (new_inv1, cards1), t1), snd current_player) in 
       let new_p2 = ((player2, (new_inv2, cards2), t2), snd target_player) in 
+      let next_color = next_turn turn.active in
       match num1, num2 with (*current and target *)
-      | 1,2 -> (new_p1, new_p2, p3, p4, new_board, turn, next)
-      | 1,3 -> (new_p1, p2, new_p2, p4, new_board, turn, next)
-      | 1,4 -> (new_p1, p2, p3, new_p2, new_board, turn, next)
-      | 2,1 -> (new_p2, new_p1, p3, p4, new_board, turn, next)
-      | 2,3 -> (p1, new_p1, new_p2, p4, new_board, turn, next)
-      | 2,4 -> (p1, new_p1, p3, new_p2, new_board, turn, next)
-      | 3,1 -> (new_p2, p2, new_p1, p4, new_board, turn, next)
-      | 3,2 -> (p1, new_p2, new_p1, p4, new_board, turn, next)
-      | 3,4 -> (p1, p2, new_p1, new_p2, new_board, turn, next)
-      | 4,1 -> (new_p2, p2, p3, new_p1, new_board, turn, next)
-      | 4,2 -> (p1, new_p2, p3, new_p1, new_board, turn, next)
-      | 4,3 -> (p1, p2, new_p2, new_p1, new_board, turn, next)
+      | 1,2 -> (new_p1, new_p2, p3, p4, new_board, turn, (next_color, DiscardRequest))
+      | 1,3 -> (new_p1, p2, new_p2, p4, new_board, turn, (next_color, DiscardRequest))
+      | 1,4 -> (new_p1, p2, p3, new_p2, new_board, turn, (next_color, DiscardRequest))
+      | 2,1 -> (new_p2, new_p1, p3, p4, new_board, turn, (next_color, DiscardRequest))
+      | 2,3 -> (p1, new_p1, new_p2, p4, new_board, turn, (next_color, DiscardRequest))
+      | 2,4 -> (p1, new_p1, p3, new_p2, new_board, turn, (next_color, DiscardRequest))
+      | 3,1 -> (new_p2, p2, new_p1, p4, new_board, turn, (next_color, DiscardRequest))
+      | 3,2 -> (p1, new_p2, new_p1, p4, new_board, turn, (next_color, DiscardRequest))
+      | 3,4 -> (p1, p2, new_p1, new_p2, new_board, turn, (next_color, DiscardRequest))
+      | 4,1 -> (new_p2, p2, p3, new_p1, new_board, turn, (next_color, DiscardRequest))
+      | 4,2 -> (p1, new_p2, p3, new_p1, new_board, turn, (next_color, DiscardRequest))
+      | 4,3 -> (p1, p2, new_p2, new_p1, new_board, turn, (next_color, DiscardRequest))
       | _ -> failwith "AHHHHH"
     end 
     | None -> (p1, p2, p3, p4, new_board, turn, next) 
@@ -307,23 +321,23 @@ let trade_response g (tr:bool) : game =
 	  let new_trades_made = turn.tradesmade + 1 in
 	  let updated_turn = {turn with pendingtrade = None ; tradesmade = new_trades_made} in 
 	  match num1, num2 with (*current and target *)
-	  | 1,2 -> (new_p1, new_p2, p3, p4, board, updated_turn, next)
-	  | 1,3 -> (new_p1, p2, new_p2, p4, board, updated_turn, next)
-	  | 1,4 -> (new_p1, p2, p3, new_p2, board, updated_turn, next)
-	  | 2,1 -> (new_p2, new_p1, p3, p4, board, updated_turn, next)
-	  | 2,3 -> (p1, new_p1, new_p2, p4, board, updated_turn, next)
-	  | 2,4 -> (p1, new_p1, p3, new_p2, board, updated_turn, next)
-	  | 3,1 -> (new_p2, p2, new_p1, p4, board, updated_turn, next)
-	  | 3,2 -> (p1, new_p2, new_p1, p4, board, updated_turn, next)
-	  | 3,4 -> (p1, p2, new_p1, new_p2, board, updated_turn, next)
-	  | 4,1 -> (new_p2, p2, p3, new_p1, board, updated_turn, next)
-	  | 4,2 -> (p1, new_p2, p3, new_p1, board, updated_turn, next)
-	  | 4,3 -> (p1, p2, new_p2, new_p1, board, updated_turn, next)
+	  | 1,2 -> (new_p1, new_p2, p3, p4, board, updated_turn, (updated_turn.active, ActionRequest))
+	  | 1,3 -> (new_p1, p2, new_p2, p4, board, updated_turn, (updated_turn.active, ActionRequest))
+	  | 1,4 -> (new_p1, p2, p3, new_p2, board, updated_turn, (updated_turn.active, ActionRequest))
+	  | 2,1 -> (new_p2, new_p1, p3, p4, board, updated_turn, (updated_turn.active, ActionRequest))
+	  | 2,3 -> (p1, new_p1, new_p2, p4, board, updated_turn, (updated_turn.active, ActionRequest))
+	  | 2,4 -> (p1, new_p1, p3, new_p2, board, updated_turn, (updated_turn.active, ActionRequest))
+	  | 3,1 -> (new_p2, p2, new_p1, p4, board, updated_turn, (updated_turn.active, ActionRequest))
+	  | 3,2 -> (p1, new_p2, new_p1, p4, board, updated_turn, (updated_turn.active, ActionRequest))
+	  | 3,4 -> (p1, p2, new_p1, new_p2, board, updated_turn, (updated_turn.active, ActionRequest))
+	  | 4,1 -> (new_p2, p2, p3, new_p1, board, updated_turn, (updated_turn.active, ActionRequest))
+	  | 4,2 -> (p1, new_p2, p3, new_p1, board, updated_turn, (updated_turn.active, ActionRequest))
+	  | 4,3 -> (p1, p2, new_p2, new_p1, board, updated_turn, (updated_turn.active, ActionRequest))
 	  | _ -> failwith "AHHHHH" )
 	else 
 	   let new_trades_made = turn.tradesmade + 1 in
 	   let updated_turn = {turn with pendingtrade = None ; tradesmade = new_trades_made} in 
-	   (p1, p2, p3, p4, board, updated_turn, next)
+	   (p1, p2, p3, p4, board, updated_turn, (updated_turn.active, ActionRequest))
     end 
     | None ->  (p1, p2, p3, p4, board, turn, (turn.active, ActionRequest))    
   in

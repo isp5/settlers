@@ -88,7 +88,7 @@ let handle_move g m =
   | InitialMove(line) -> None, Move.initial_move g line (*no one should ever win to start *)
   | RobberMove(robbermove) -> None, Move.robber_move g robbermove (*robber move shouldn't result in win*)
   | DiscardMove(cost) -> None, Move.discard_move g cost (*shouldn't result in a win? *)
-  | TradeResponse(bool) -> failwith "not implemented" (*shouldn't result in win*)
+  | TradeResponse(bool) -> None, Move.trade_response g bool (*shouldn't result in win*)
   | Action(action) -> failwith "Action.handle_action g action " (*can result in win*)
 
 let presentation g = 
