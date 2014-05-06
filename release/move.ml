@@ -73,7 +73,7 @@ let initial_move (g:game) line : game =
     if not (List.mem point2 check_these) then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM) 
     else 
       let (result, p2s) = check_structures check_these inters false [] in
-      (if result then gen_valid_initial_move inters (range_list 0 53)
+      (if result then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM)
        else (point1, (List.hd p2s))) in
   let (point1, point2) = initial_move_check g line in
   (*make the move -> update game to reflect the move was made *)
@@ -167,7 +167,6 @@ let robber_move g rm : game =
     let (piece, target) = rm in 
     let (map, structures, deck, discard, robber) = board in 
     let (inters, roads) = structures in 
-    (*let (hex_list, port_list) = map in*)
     let points_to_check = piece_corners piece in 
     let rec check_target ls color result1 result2 : (bool*bool) = 
       match ls with 
@@ -201,7 +200,6 @@ let robber_move g rm : game =
       if result = n then gen_ran_not_n n else result
     in
     let valid_placement = gen_ran_not_n robber in
-    (*let (hlist, plist) = map in *)
     let (inters, roads) = structures in 
     let corners = piece_corners valid_placement in
     (*check corners, if there's a possible target (not yourself) pick them else none *)
@@ -272,13 +270,62 @@ let robber_move g rm : game =
   in
   if check_valid board rm then handle_valid_move g rm 
   else let valid_rm = gen_valid_move g rm in handle_valid_move g valid_rm 
-    
-  
 
 
-
-let trade_response g tr : game = 
-  if tr then failwith "handle the trade using info in turn"
-  else failwith "handle the proper trade stuff here too -> maybe an action"
-
-
+let trade_response g (tr:bool) : game = 
+  let check_valid g : bool = 
+    (* make sure both players have inventory to make it happen...might be unneccessary*)
+    let (p1,p2,p3,p4,board,turn,next) = g in
+    match turn.pendingtrade with 
+    | Some (color, cost1, cost2) ->
+	let (current_player, num1) = get_current_playerinfo g in 
+	let (second_player , num2) = get_player_by_color g color in 
+	let (inv1, cards1) = get_player_hand current_player in 
+	let (inv2, cards2) = get_player_hand second_player in 
+	let (rb1, rw1, ro1, rl1, rg1) = map_cost2 (-) cost1 inv1 in 
+	let (rb2, rw2, ro2, rl2, rg2) = map_cost2 (-) cost2 inv2 in 
+	rb1 >=0 && rw1 >=0 && ro1 >= 0 && rl1 >=0 && rg1 >= 0 && rb2 >=0 && rw2 >=0 && ro2 >= 0 && rl2 >=0 && rg2 >= 0 
+    | None -> true
+  in
+  let handle_trade b g : game =
+    let (p1,p2,p3,p4,board,turn,next) = g in 
+    match turn.pendingtrade with 
+    | Some (color, cost1, cost2) -> begin
+	if b then (
+	  let (current_player, num1) = get_current_playerinfo g in 
+	  let (second_player , num2) = get_player_by_color g color in 
+	  let (inv1, cards1) = get_player_hand current_player in 
+	  let (inv2, cards2) = get_player_hand second_player in 
+	  let inter_inv1 = map_cost2 (-) cost1 inv1 in 
+	  let inter_inv2 = map_cost2 (-) cost2 inv2 in 
+	  let final_inv1 = map_cost2 (+) cost2 inter_inv1 in 
+	  let final_inv2 = map_cost2 (+) cost1 inter_inv2 in  
+	  let (player1, hand1, t1) = fst current_player in 
+	  let (player2, hand2, t2) = fst second_player in 
+	  let new_p1 = ((player1, (final_inv1, cards1), t1), snd current_player) in 
+	  let new_p2 = ((player2, (final_inv2, cards2), t2), snd second_player) in 
+	  let new_trades_made = turn.tradesmade + 1 in
+	  let updated_turn = {turn with pendingtrade = None ; tradesmade = new_trades_made} in 
+	  match num1, num2 with (*current and target *)
+	  | 1,2 -> (new_p1, new_p2, p3, p4, board, updated_turn, next)
+	  | 1,3 -> (new_p1, p2, new_p2, p4, board, updated_turn, next)
+	  | 1,4 -> (new_p1, p2, p3, new_p2, board, updated_turn, next)
+	  | 2,1 -> (new_p2, new_p1, p3, p4, board, updated_turn, next)
+	  | 2,3 -> (p1, new_p1, new_p2, p4, board, updated_turn, next)
+	  | 2,4 -> (p1, new_p1, p3, new_p2, board, updated_turn, next)
+	  | 3,1 -> (new_p2, p2, new_p1, p4, board, updated_turn, next)
+	  | 3,2 -> (p1, new_p2, new_p1, p4, board, updated_turn, next)
+	  | 3,4 -> (p1, p2, new_p1, new_p2, board, updated_turn, next)
+	  | 4,1 -> (new_p2, p2, p3, new_p1, board, updated_turn, next)
+	  | 4,2 -> (p1, new_p2, p3, new_p1, board, updated_turn, next)
+	  | 4,3 -> (p1, p2, new_p2, new_p1, board, updated_turn, next)
+	  | _ -> failwith "AHHHHH" )
+	else 
+	   let new_trades_made = turn.tradesmade + 1 in
+	   let updated_turn = {turn with pendingtrade = None ; tradesmade = new_trades_made} in 
+	   (p1, p2, p3, p4, board, updated_turn, next)
+    end 
+    | None ->  (p1, p2, p3, p4, board, turn, (turn.active, ActionRequest))    
+  in
+  if check_valid g && tr then (handle_trade tr g)
+  else (handle_trade tr g)
