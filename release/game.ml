@@ -84,11 +84,21 @@ let init_game () = game_of_state (gen_initial_state())
 
 
 let handle_move g m = 
+  let (p1, p2, p3, p4, board, turn, next) = g in 
+  let (color, request) = next in 
   match m with 
-  | InitialMove(line) -> None, Move.initial_move g line (*no one should ever win to start *)
-  | RobberMove(robbermove) -> None, Move.robber_move g robbermove (*robber move shouldn't result in win*)
-  | DiscardMove(cost) -> None, Move.discard_move g cost (*shouldn't result in a win? *)
-  | TradeResponse(bool) -> None, Move.trade_response g bool (*shouldn't result in win*)
+  | InitialMove(line) -> 
+    if request = InitialRequest then None, Move.initial_move g line (*no one should ever win to start *)
+    else None, Move.discard_move g (0,0,0,0,0) 
+  | RobberMove(robbermove) -> 
+    if request = RobberRequest then None, Move.robber_move g robbermove (*robber move shouldn't result in win*)
+    else None, Move.discard_move g (0,0,0,0,0)
+  | DiscardMove(cost) -> 
+    if request = DiscardRequest then None, Move.discard_move g cost (*shouldn't result in a win? *)
+    else None, Move.discard_move g (0,0,0,0,0)
+  | TradeResponse(bool) ->
+    if request = TradeRequest then None, Move.trade_response g bool (*shouldn't result in win*)
+    else None, Move.discard_move g (0,0,0,0,0)
   | Action(action) -> failwith "Action.handle_action g action " (*can result in win*)
 
 let presentation g = 
