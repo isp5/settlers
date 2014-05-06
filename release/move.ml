@@ -143,7 +143,7 @@ let discard_move g cost : game =
       let inv_list = (make_list Brick b []) @ (make_list Wool w []) @ (make_list Ore o []) @ (make_list Lumber l []) @ (make_list Grain g []) in 
       (*grab a certain number from this list, convert it to a cost *) 
       let hand_size = sum_cost inv in
-      let number_to_discard = hand_size/2 in
+      let number_to_discard = if hand_size >= cMAX_HAND_SIZE then hand_size/2 else 0 in
       let rec pick_n ls n acc =  (*for this to work n must be smaller than size of the list *)
 	match n with 
 	| 0 -> acc 
