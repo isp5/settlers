@@ -104,7 +104,7 @@ let initial_move g line : game =
       else 
 	let (result, p2s) = check_structures check_these inters false [] in
 	(if result then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM)
-	 else (point1, (List.hd p2s))))
+	 else (point1, point2)))
     | Some _ -> gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM) 
   in
   let (point1, point2) = initial_move_check g line in
