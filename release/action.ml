@@ -185,26 +185,57 @@ let can_build (b:build) g : bool =
     | Reveal(cl) -> (List.length cl > 0)
   
 
-let build_road b r g cost : game = 
-  let (p1, p2, p3, p4, (map, (inters, roads), deck, discard, robber), t, n) = g in 
-  let (current_player, num) = get_player_by_color g (t.active) in
-  let (inv, cards) = get_player_hand current_player in 
-  let (color, line) = r in 
-  let (pt1, pt2) = line in 
-  let handle_build cost =
-    let inter_pi = remove_from_inventory current_player cost in 
-    let (player, (sphl, rl)) = inter_pi in 
-    let new_player_info = (player, (sphl, r::rl)) in 
-    let new_board = (map, (inters, r::roads), deck, discard, robber) in 
-    if num = 1 then (new_player_info, p2, p3, p4, new_board, t, (t.active, ActionRequest)) 
-    else if num = 2 then (p1, new_player_info, p3, p4, new_board, t, (t.active, ActionRequest))
-    else if num = 3 then (p1, p2, new_player_info, p4, new_board, t, (t.active, ActionRequest))
-    else (p1, p2, p3, new_player_info, new_board, t, (t.active, ActionRequest))
-  in
-  if (can_afford inv cost) && (check_adjacent r) && (not (enemy_settlement_at_point pt1 (t.active) inters)) 
-    && (not (road_already line roads false)) && (road_to_here pt1 current_player) && can_build b g 
-  then handle_build cost 
-  else failwith "end turn stuff" 
+let build_road b r ro g cost : game = 
+  match ro with 
+  | None -> begin 
+    let (p1, p2, p3, p4, (map, (inters, roads), deck, discard, robber), t, n) = g in 
+    let (current_player, num) = get_player_by_color g (t.active) in
+    let (inv, cards) = get_player_hand current_player in 
+    let (color, line) = r in 
+    let (pt1, pt2) = line in 
+    let handle_build g cost =
+      let inter_pi = remove_from_inventory current_player cost in 
+      let (player, (sphl, rl)) = inter_pi in 
+      let new_player_info = (player, (sphl, r::rl)) in 
+      let new_board = (map, (inters, r::roads), deck, discard, robber) in 
+      if num = 1 then (new_player_info, p2, p3, p4, new_board, t, (t.active, ActionRequest)) 
+      else if num = 2 then (p1, new_player_info, p3, p4, new_board, t, (t.active, ActionRequest))
+      else if num = 3 then (p1, p2, new_player_info, p4, new_board, t, (t.active, ActionRequest))
+      else (p1, p2, p3, new_player_info, new_board, t, (t.active, ActionRequest))
+    in
+    if (can_afford inv cost) && (check_adjacent r) && (not (enemy_settlement_at_point pt1 (t.active) inters)) 
+      && (not (road_already line roads false)) && (road_to_here pt1 current_player) && can_build b g 
+    then handle_build g cost 
+    else end_turn g 
+  end
+  | Some r2 -> begin
+    let (p1, p2, p3, p4, (map, (inters, roads), deck, discard, robber), t, n) = g in 
+    let (current_player, num) = get_player_by_color g (t.active) in
+    let (inv, cards) = get_player_hand current_player in 
+    let (color, line) = r in 
+    let (color2, line2) = r2 in
+    let (pt1, pt2) = line in 
+    let (pt3, pt4) = line2 in 
+    let handle_build g cost =
+      let inter_pi = remove_from_inventory current_player cost in 
+      let (player, (sphl, rl)) = inter_pi in 
+      let new_player_info = (player, (sphl, r::rl)) in 
+      let new_board = (map, (inters, r::roads), deck, discard, robber) in 
+      if num = 1 then (new_player_info, p2, p3, p4, new_board, t, (t.active, ActionRequest)) 
+      else if num = 2 then (p1, new_player_info, p3, p4, new_board, t, (t.active, ActionRequest))
+      else if num = 3 then (p1, p2, new_player_info, p4, new_board, t, (t.active, ActionRequest))
+      else (p1, p2, p3, new_player_info, new_board, t, (t.active, ActionRequest))
+    in
+    if (can_afford inv cost) && (check_adjacent r) && (not (enemy_settlement_at_point pt1 (t.active) inters)) 
+      && (not (road_already line roads false))  && (road_to_here pt1 current_player) && can_build b g 
+    then (let g2 = handle_build g cost in
+	 if (can_afford inv cost) && (check_adjacent r2) 
+	   && (not (enemy_settlement_at_point pt3 (t.active) inters)) 
+	   && (not (road_already line2 roads false))  && (road_to_here pt3 current_player) && can_build b g2 
+	 then handle_build g2 cost
+	 else end_turn g)
+    else end_turn g
+  end 
   
 
 let build_town b pt (g:game) : game = 
@@ -233,7 +264,7 @@ let build_town b pt (g:game) : game =
   if (can_afford inv cCOST_TOWN) && (not (fst (check_structures (adjacent_points pt) inters false [])))
     && (can_build b g) && (road_to_here pt current_player )
   then handle_build pt
-  else failwith "end turn stuff" 
+  else end_turn g
 
 let check_if_town color inters pt : bool = 
   match List.nth inters pt with 
@@ -263,7 +294,7 @@ let build_city b pt g : game =
   in
   if (can_afford inv cCOST_CITY) && (check_if_town (t.active) inters pt) && (can_build b g) 
   then handle_build pt
-  else failwith "end turn stuff" 
+  else end_turn g 
  
 let build_card b g : game = 
   let (p1, p2, p3, p4, (map, s, deck, discard, robber), t, n) = g in 
@@ -283,7 +314,7 @@ let build_card b g : game =
       else if num = 3 then (p1, p2, inter_pi, p4, new_board, updated_turn, (t.active, ActionRequest))
       else (p1, p2, p3, inter_pi, new_board, updated_turn, (t.active, ActionRequest))
     | Hidden(i) -> failwith "shouldn't be hidden?" )
-  else failwith "end turn stuff"
+  else end_turn g
 
 
 (** Returns a cost where there is one of the resource specified, and zero of all others *)
@@ -368,7 +399,7 @@ let handle_action g a:(color option*game)=
   (*all functionality necessary for the build action*)
   let build_action g b = 
     match b with
-     | BuildRoad(r) -> build_road b r g cCOST_ROAD
+     | BuildRoad(r) -> build_road b r None g cCOST_ROAD
      | BuildTown(pt) -> build_town b pt g
      | BuildCity(pt) -> build_city b pt g
      | BuildCard -> build_card b g
