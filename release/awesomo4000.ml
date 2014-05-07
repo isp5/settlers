@@ -187,6 +187,11 @@ let rec search_hexes hlist n acc =
 
   let decide_trade_response g = TradeResponse(false) (*don't trade with anyone!*)
 
+  let can_afford inv cost = 
+    match (map_cost2 (-) cost inv) with 
+    | (b,w,o,g,l) -> 
+      b < 0 || w < 0 || o < 0 || g < 0 || l < 0
+
   let make_action g =
     let (p1, p2, p3, p4, ((hlist, plist), s, d, di, r), t, n) = g in
     if is_none t.dicerolled then Action(RollDice) 
@@ -194,12 +199,14 @@ let rec search_hexes hlist n acc =
       (*should be me? *)
       let me = get_player_by_color t.active g in 
       let ((color, (inv, cards), trophies), (sphl, rl)) = me in 
+      if can_afford inv cCOST_CITY then (
       match sphl with 
       | (Town, p, hl)::tl -> Action(BuyBuild(BuildCity(p)))
       | (City, p, hl)::(Town, p2, hl2)::tl -> Action(BuyBuild(BuildCity(p2)))
-      | (City, p, hl)::(City, p2, hl2)::tl -> Action(BuyBuild(BuildCard))
-      | _ -> 
-	match cards with 
+      | (City, p, hl)::(City, p2, hl2)::tl -> 
+	if can_afford inv cCOST_CARD then Action(BuyBuild(BuildCard))
+	else (	
+	  match cards with 
 	| Reveal(cs) -> begin 
 	  match List.hd cs with 
 	  | Knight -> Action(PlayCard(PlayKnight(0, None)))
@@ -208,8 +215,22 @@ let rec search_hexes hlist n acc =
 	  | YearOfPlenty -> Action(PlayCard(PlayYearOfPlenty(Ore, Some(Wool))))
 	  | Monopoly -> Action(PlayCard(PlayMonopoly(Grain)))
 	end 
-	| _ -> Action(EndTurn)
-    )
+	| _ -> Action(EndTurn))
+      | _ -> Action(EndTurn))
+      else (
+	if can_afford inv cCOST_CARD then Action(BuyBuild(BuildCard))
+	else (	
+	  match cards with 
+	| Reveal(cs) -> begin 
+	  match List.hd cs with 
+	  | Knight -> Action(PlayCard(PlayKnight(0, None)))
+	  | VictoryPoint -> Action(EndTurn)
+	  | RoadBuilding -> Action(PlayCard(PlayRoadBuilding((t.active,(0,0)),None))) (*effectively discard *)
+	  | YearOfPlenty -> Action(PlayCard(PlayYearOfPlenty(Ore, Some(Wool))))
+	  | Monopoly -> Action(PlayCard(PlayMonopoly(Grain)))
+	end 
+	| _ -> Action(EndTurn)))
+    
 (* Invalid moves are overridden in game *)
   let handle_request ((b,p,t,n) : state) : move =
     let s = (b,p,t,n) in
