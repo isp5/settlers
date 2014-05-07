@@ -229,7 +229,7 @@ let rec search_hexes hlist n acc =
 	  | YearOfPlenty -> Action(PlayCard(PlayYearOfPlenty(Ore, Some(Wool))))
 	  | Monopoly -> Action(PlayCard(PlayMonopoly(Grain)))
 	end 
-	| _ -> Action(EndTurn)))
+	| _ -> Action(EndTurn))))
     
 (* Invalid moves are overridden in game *)
   let handle_request ((b,p,t,n) : state) : move =
