@@ -140,7 +140,7 @@ let rec search_hexes hlist n acc =
 	| _, Desert -> 1
 	| _ -> 0
       in
-	print_ter_list (List.rev(List.sort comparator ls));List.rev (List.sort comparator ls)
+      (List.sort comparator ls)
     in 
      let list = preference(search_hexes hlist 0 []) in 
     let rec choose_pt lst=  
@@ -148,13 +148,19 @@ let rec search_hexes hlist n acc =
         match List.nth intersList pt with
           |Some(a)-> true
           |None -> false in
-      match list  with 
+      match list with 
         | [] -> 0,0
-        | (hd, t)::tl -> 
-        let point_to_try = hd in
-        let ps =  adjacent_points point_to_try in 
-        let p2 = List.hd ps in
-        if (occupied hd inters) then (choose_pt tl) else (point_to_try,p2) in
+        | (hd, t)::(hd2, t2)::tl -> (
+          let point_to_try = hd2 in
+          let ps =  adjacent_points point_to_try in 
+          let p2 = List.hd ps in
+          if (occupied hd2 inters) then (choose_pt tl) else (point_to_try,p2) )
+	| (hd, t)::[] -> (
+          let point_to_try = hd in
+          let ps =  adjacent_points point_to_try in 
+          let p2 = List.hd ps in
+          if (occupied hd inters) then (0,0) else (point_to_try,p2) )
+    in
     InitialMove(choose_pt list)
     
   let get_player_by_color c g = 
@@ -217,10 +223,12 @@ let rec search_hexes hlist n acc =
 
   let decide_trade_response g = TradeResponse(false) (*don't trade with anyone!*)
 
-  let can_afford inv cost = 
-    match (map_cost2 (-) inv cost) with 
-    | (b,w,o,g,l) -> 
-      b < 0 || w < 0 || o < 0 || g < 0 || l < 0
+
+  let can_afford inv cost: bool = 
+    let left = map_cost2 (-) inv cost in 
+    match left with 
+    | (b, w, o, g, l) -> 
+      b >=0 && w >= 0 && o >=0 && l >= 0 && g >= 0
 
   let make_action g =
     let (p1, p2, p3, p4, ((hlist, plist), s, d, di, r), t, n) = g in
