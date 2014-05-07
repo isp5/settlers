@@ -132,10 +132,12 @@ let rec convert_to_cost ls cost =
 let discard_move g cost : game = 
   let (current_player, num) = get_current_playerinfo g in 
   let check_valid_cost g cost : bool = 
+    if sum_cost cost < 0 then false 
+    else (
     let (inv, cards) = get_player_hand current_player in 
     let sum = map_cost2 (-) inv cost in
     match sum with 
-    | (b, w, o, l, g) ->  b < 0 || w < 0 || o < 0 || l < 0 || g < 0 
+    | (b, w, o, l, g) ->  b < 0 || w < 0 || o < 0 || l < 0 || g < 0 )
   in 
   let gen_valid_cost g (inv:cost) : cost = 
     match inv with 
@@ -198,6 +200,8 @@ let robber_move g rm : game =
     let (piece, target) = rm in 
     let (map, structures, deck, discard, robber) = board in 
     let (inters, roads) = structures in 
+    if piece < 0 then false 
+    else (
     let points_to_check = piece_corners piece in  
     (*piece must be on board and not where robber is currently and target (or lack of) must be valid *) 
     match target with 
@@ -206,7 +210,7 @@ let robber_move g rm : game =
       right_target && piece <> robber && piece <=  cMAX_PIECE_NUM && piece >= cMIN_PIECE_NUM 
     | None -> 
       let (right_target, valid_target) = check_target points_to_check inters None current_color false false in
-      (not valid_target) && piece <> robber && piece <=  cMAX_PIECE_NUM && piece >= cMIN_PIECE_NUM
+      (not valid_target) && piece <> robber && piece <=  cMAX_PIECE_NUM && piece >= cMIN_PIECE_NUM )
   in
   let gen_valid_move g rm : robbermove = 
     (*pick random int 0-18 but it can't be where robber is now *)

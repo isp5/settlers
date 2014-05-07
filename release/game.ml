@@ -85,22 +85,35 @@ let init_game () = game_of_state (gen_initial_state())
 
 let handle_move g m = 
   let (p1, p2, p3, p4, board, turn, next) = g in 
-  let (color, request) = next in 
-  match m with 
-  | InitialMove(line) -> 
-    if request = InitialRequest then None, Move.initial_move g line (*no one should ever win to start *)
-    else None, Move.discard_move g (0,0,0,0,0) 
-  | RobberMove(robbermove) -> 
-    if request = RobberRequest then None, Move.robber_move g robbermove (*robber move shouldn't result in win*)
-    else None, Move.discard_move g (0,0,0,0,0)
-  | DiscardMove(cost) -> 
-    if request = DiscardRequest then None, Move.discard_move g cost (*shouldn't result in a win? *)
-    else None, Move.discard_move g (0,0,0,0,0)
-  | TradeResponse(bool) ->
-    if request = TradeRequest then None, Move.trade_response g bool (*shouldn't result in win*)
-    else None, Move.discard_move g (0,0,0,0,0) (*need to come up with better result *)
-  | Action(action) -> failwith "Action.handle_action g action " (*can result in win*)
-
+  let (color, request) = next in
+  match request with 
+  | InitialRequest -> begin
+    match m with 
+    | InitialMove(line) -> None, Move.initial_move g line (*no intial should win *)
+    | _ -> None, Move.initial_move g (0,0)  (*will be bogus move, random valid will be generated *)
+  end 
+  | RobberRequest -> begin
+    match m with 
+    | RobberMove(robbermove) -> None, Move.robber_move g robbermove
+    | _ -> None, Move.robber_move g (-1, None) (*will be bogus move, random valid will be generated *)
+  end 
+  | DiscardRequest -> begin 
+    match m with
+    | DiscardMove(cost) ->  None, Move.discard_move g cost
+    | _ -> None, Move.discard_move g (-1, -1, -1, -1, -1) (*will be bogus move, random valid will be generated *)
+  end 
+  | TradeRequest -> begin
+    match m with 
+    | TradeResponse(bool) -> None, Move.trade_response g bool 
+    | _ -> None, Move.trade_response g false (*not sure what else to do *)
+  end 
+  | ActionRequest -> begin
+    match m with 
+    | Action(action) -> Action.handle_action g action
+    | _ -> Action.handle_action g EndTurn 
+  end 
+ 
+ 
 let presentation g = 
   let (p1, p2, p3, p4, (m,s,d,di,r) , t, n) = g in
   if get_player_color p1 = t.active then
