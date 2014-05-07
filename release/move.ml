@@ -151,11 +151,12 @@ let initial_move g line : game =
     else (prev_turn color) in
   
   let looped = (have_n_structures (fst(get_player_by_color g color)) 2) && (turn.active = color) in
-  let next_request = if looped then (turn.active, ActionRequest) else (next_color, InitialRequest) in 
-  if num = 1 then ((fst p1, new_info), p2, p3, p4, new_board, turn, next_request)
-  else if num = 2 then (p1, (fst p2, new_info), p3, p4, new_board, turn, next_request)
-  else if num = 3 then (p1, p2, (fst p3, new_info), p4, new_board, turn, next_request)
-  else (p1, p2, p3, (fst p4, new_info), new_board, turn, next_request)
+  let next_request = if looped then (print_endline"looped";(turn.active, ActionRequest)) else (next_color, InitialRequest) in 
+  let nboard = if looped then board else new_board in 
+  if num = 1 then ((fst p1, new_info), p2, p3, p4, nboard, turn, next_request)
+  else if num = 2 then (p1, (fst p2, new_info), p3, p4, nboard, turn, next_request)
+  else if num = 3 then (p1, p2, (fst p3, new_info), p4, nboard, turn, next_request)
+  else (p1, p2, p3, (fst p4, new_info), nboard, turn, next_request)
 
 let rec make_list c n acc = 
 	match n with 
@@ -204,15 +205,15 @@ let discard_move g cost : game =
     let (p1, p2, p3, p4, b, t, n) = g in 
     let (inv, cards) = get_player_hand current_player in 
     let new_inv = map_cost2 (-) inv cost in
-    let (color, hand, trophies) = fst current_player in 
+    let (pc, hand, trophies) = fst current_player in 
     let updated_hand = (new_inv, snd hand) in 
     let (color, req) = n in 
-    let looped = ((color,req) = ((next_turn t.active),DiscardRequest)) in 
-    let next = if looped then (t.active,ActionRequest) else (next_turn t.active, DiscardRequest) in
-    if num = 1 then (((color,updated_hand, trophies), snd current_player), p2, p3, p4, b, t, next) 
-    else if num = 2 then (p1, ((color, updated_hand, trophies), snd current_player), p3, p4, b, t, next)
-    else if num = 3 then (p1, p2, ((color, updated_hand, trophies), snd current_player), p4, b, t, next)
-    else (p1, p2, p3, ((color, updated_hand, trophies), snd current_player), b, t, next) 
+    let looped = ((color,req) = ((next_turn color),DiscardRequest)) in 
+    let next = if looped then (t.active,ActionRequest) else (next_turn color, DiscardRequest) in
+    if num = 1 then (((pc,updated_hand, trophies), snd current_player), p2, p3, p4, b, t, next) 
+    else if num = 2 then (p1, ((pc, updated_hand, trophies), snd current_player), p3, p4, b, t, next)
+    else if num = 3 then (p1, p2, ((pc, updated_hand, trophies), snd current_player), p4, b, t, next)
+    else (p1, p2, p3, ((pc, updated_hand, trophies), snd current_player), b, t, next) 
   in 
   let (inv, cards) = get_player_hand current_player in 
   if not (check_valid_cost g cost) then 
