@@ -347,7 +347,7 @@ let handle_action g a:(color option*game)=
         )
         |[]-> ratio in
     let compute_inv inv ratio= 
-      let enough_resources = num_resource_in_inventory inv sold > ratio in
+      let enough_resources =  num_resource_in_inventory inv sold >= ratio in
       if enough_resources 
       then Some(map_cost2 (fun x y -> x+y) (single_resource_cost bought) (map_cost2 (fun x y -> x-y) inv (many_of_one_resource_cost sold ratio)))
       else None in
@@ -364,7 +364,7 @@ let handle_action g a:(color option*game)=
     let np4 = apply_mtrade p4 t.active in
     let game = (p1,p2,p3,p4,((hxLst,portList),s,deck,discard,robber),t,n) in
     match (np1,np2,np3,np4) with
-      |Some(a1),Some(a2),Some(a3),Some(a4)->(a1,a2,a3,a4,((hxLst,portList),s,deck,discard,robber),t,(t.active, ActionRequest)) 
+      |Some(a1),Some(a2),Some(a3),Some(a4)->(a1,a2,a3,a4,((hxLst,portList),s,deck,discard,robber),t,(t.active, ActionRequest))
       |_-> end_turn game in
 
   (*all functionality necessary for the domestic trade action*)
