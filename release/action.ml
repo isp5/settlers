@@ -239,6 +239,10 @@ let build_road b r ro g cost : game =
     else end_turn g
   end 
   
+let check_if_town color inters pt : bool = 
+  match List.nth inters pt with 
+  | Some(c, Town) -> (c = color)
+  | _ -> false
 
 let build_town b pt (g:game) : game = 
   let (p1, p2, p3, p4, ((hlist, plist), (inters, roads), deck, discard, robber), t, n) = g in 
@@ -264,14 +268,12 @@ let build_town b pt (g:game) : game =
     else (p1, p2, p3, new_playerinfo, new_board, t, (t.active, ActionRequest))
   in
   if (can_afford inv cCOST_TOWN) && (not (fst (check_structures (adjacent_points pt) inters false [])))
-    && (can_build b g) && (road_to_here pt current_player )
+    && (can_build b g) && (road_to_here pt current_player ) 
+    && (not (check_if_town (get_player_color current_player) inters pt))
   then handle_build pt
   else end_turn g
 
-let check_if_town color inters pt : bool = 
-  match List.nth inters pt with 
-  | Some(c, Town) -> (c = color)
-  | _ -> false
+
  
 let already_city color inters pt : bool = 
   match List.nth inters pt with 
