@@ -130,7 +130,7 @@ let road_to_here pt pi : bool =
     | hd::tl -> 
       match hd with 
       | color, (pt1, pt2) -> 
-	print_endline (string_of_int pt1);print_endline (string_of_int pt2);if pt1 = pt || pt2 = pt then true
+	if pt1 = pt || pt2 = pt then true
 	else loop tl pt (false || result) 
   in 	  
   match pi with 
@@ -205,10 +205,6 @@ let build_road b r ro g cost : game =
       else if num = 3 then (p1, p2, new_player_info, p4, new_board, t, (t.active, ActionRequest))
       else (p1, p2, p3, new_player_info, new_board, t, (t.active, ActionRequest))
     in
-    print_endline (string_of_bool (can_afford inv cost));print_endline (string_of_bool (check_adjacent r));
-    print_endline (string_of_bool (not (enemy_settlement_at_point pt1 (t.active) inters)));
-    print_endline (string_of_bool (not (road_already line roads false)));
-    print_endline (string_of_bool (road_to_here pt1 current_player));print_endline (string_of_bool (can_build b g));
     if (can_afford inv cost) && (check_adjacent r) && (not (enemy_settlement_at_point pt1 (t.active) inters)) 
       && (not (road_already line roads false)) && (road_to_here pt1 current_player) && can_build b g 
     then handle_build g cost 
@@ -277,6 +273,11 @@ let check_if_town color inters pt : bool =
   | Some(c, Town) -> (c = color)
   | _ -> false
  
+let already_city color inters pt : bool = 
+  match List.nth inters pt with 
+  | Some(c, City) -> (c = color)
+  | _ -> false
+
 let build_city b pt g : game = 
   let (p1, p2, p3, p4, ((hlist, plist), (inters, roads), deck, discard, robber), t, n) = g in 
   let (current_player, num) = get_player_by_color g (t.active) in
@@ -299,6 +300,7 @@ let build_city b pt g : game =
     else (p1, p2, p3, new_playerinfo, new_board, t, (t.active, ActionRequest))
   in
   if (can_afford inv cCOST_CITY) && (check_if_town (t.active) inters pt) && (can_build b g) 
+    && (not (already_city (t.active) inters pt))
   then handle_build pt
   else end_turn g 
  
