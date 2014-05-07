@@ -294,14 +294,20 @@ let robber_move g rm : game =
       let (b1, w1, o1, l1, g1) = inv1 in 
       let (b2, w2, o2, l2, g2) = inv2 in 
       let inv2_list = (make_list Brick b2 []) @ (make_list Wool w2 []) @ (make_list Ore o2 []) @ (make_list Lumber l2 []) @ (make_list Grain g2 []) in 
-      let (resource_to_steal, resulting_inv) = pick_one inv2_list in 
+      let (resource_to_steal, resulting_inv) = 
+	match inv2_list with 
+	| [] -> (None, inv2_list)
+	| hd::tl -> 
+	  let resource, reslist = pick_one inv2_list in
+	  Some (resource), reslist in 
       let new_p2_inv = convert_to_cost resulting_inv (0,0,0,0,0) in 
       match resource_to_steal with 
-      | Brick -> (((b1+1), w1, o1, l1, g1), new_p2_inv)
-      | Wool -> ((b1, (w1+1), o1, l1, g1), new_p2_inv)
-      | Ore -> ((b1, w1, (o1+1), l1, g1), new_p2_inv)
-      | Lumber -> ((b1, w1, o1, (l1+1), g1), new_p2_inv)
-      | Grain -> ((b1, w1, o1, l1, (g1+1)), new_p2_inv)  
+      | Some Brick -> (((b1+1), w1, o1, l1, g1), new_p2_inv)
+      | Some Wool -> ((b1, (w1+1), o1, l1, g1), new_p2_inv)
+      | Some Ore -> ((b1, w1, (o1+1), l1, g1), new_p2_inv)
+      | Some Lumber -> ((b1, w1, o1, (l1+1), g1), new_p2_inv)
+      | Some Grain -> ((b1, w1, o1, l1, (g1+1)), new_p2_inv) 
+      | None -> ((b1, w1, o1, l1, g1), new_p2_inv)
     in
     let (placement, target) = rm in 
     let (p1, p2, p3, p4, board, turn, next) = g in 
