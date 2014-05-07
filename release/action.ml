@@ -467,15 +467,13 @@ let handle_action g a:(color option*game)=
     let np2 = steal p2 in
     let np3 = steal p3 in
     let np4 = steal p4 in
-    (* need to figure out how to factor my color into this*)
     let new_board = (hxLst,portList),(inters,rds),deck,discard,piece in
     if piece <= cMAX_PIECE_NUM && piece >= cMIN_PIECE_NUM
     then (if validColor || (is_none colOpt && not colorsToSteal) then (np1,np2,np3,np4,new_board,t,n) else end_turn game)
     else end_turn game in
 
-  let play_road_building ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),b,t,n) rd1 rdOption =
-    let game = (p1,p2,p3,p4,b,t,n) in
-    end_turn game in
+  let play_road_building game rd1 rdOption =
+    build_road (BuildRoad(rd1)) rd1 rdOption game (0,0,0,0,0) in
 
   let play_card_action game playedCard =
     match playedCard with
