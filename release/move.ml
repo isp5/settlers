@@ -387,8 +387,8 @@ let trade_response g (tr:bool) : game =
 	let (second_player , num2) = get_player_by_color g color in 
 	let (inv1, cards1) = get_player_hand current_player in 
 	let (inv2, cards2) = get_player_hand second_player in 
-	let (rb1, rw1, ro1, rl1, rg1) = map_cost2 (-) cost1 inv1 in 
-	let (rb2, rw2, ro2, rl2, rg2) = map_cost2 (-) cost2 inv2 in 
+	let (rb1, rw1, ro1, rg1, rl1) = map_cost2 (-) inv1 cost1 in 
+	let (rb2, rw2, ro2, rg2, rl2) = map_cost2 (-) inv2 cost2 in 
 	rb1 >=0 && rw1 >=0 && ro1 >= 0 && rl1 >=0 && rg1 >= 0 && rb2 >=0 && rw2 >=0 && ro2 >= 0 && rl2 >=0 && rg2 >= 0 
     | None -> true
   in
@@ -401,8 +401,8 @@ let trade_response g (tr:bool) : game =
 	  let (second_player , num2) = get_player_by_color g color in 
 	  let (inv1, cards1) = get_player_hand current_player in 
 	  let (inv2, cards2) = get_player_hand second_player in 
-	  let inter_inv1 = map_cost2 (-) cost1 inv1 in 
-	  let inter_inv2 = map_cost2 (-) cost2 inv2 in 
+	  let inter_inv1 = map_cost2 (-) inv1 cost1 in 
+	  let inter_inv2 = map_cost2 (-) inv2 cost2 in 
 	  let final_inv1 = map_cost2 (+) cost2 inter_inv1 in 
 	  let final_inv2 = map_cost2 (+) cost1 inter_inv2 in  
 	  let (player1, hand1, t1) = fst current_player in 
