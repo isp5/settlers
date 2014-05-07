@@ -50,8 +50,7 @@ let roll_dice  ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),
     let p4_info roll:(playerinfo)= add_player_resources p4 roll in
     match numRolled with
       | r -> (
-        (*if r = cROBBER_ROLL*)
-        if false
+        if r = cROBBER_ROLL
         then robber_roll (p1,p2,p3,p4,b,(modify_turn t r),n) 
         else ((p1_info r),(p2_info r),(p3_info r),(p4_info) r,b,(modify_turn t r),(t.active, ActionRequest)))
 
