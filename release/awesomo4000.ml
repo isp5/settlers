@@ -38,6 +38,18 @@ let hide_hand pi =
   | c, (inv, cs) , t -> (c, (inv, hide cs), t), snd pi
 
 
+let rec print_ter_list ls = 
+  match ls with 
+  | [] -> print_endline "done"
+  | (n,t)::tl -> 
+    match t with 
+    | Mountain -> print_endline "Mountain";print_ter_list tl
+    | Hill -> print_endline "Hill";print_ter_list tl
+    | Pasture -> print_endline "Pasture";print_ter_list tl
+    | Field -> print_endline "Field";print_ter_list tl
+    | Forest -> print_endline "Forest";print_ter_list tl
+    | Desert -> print_endline "Desert";print_ter_list tl
+
 let state_of_game g = 
   match g with 
   | p1, p2, p3, p4, b, t, n -> b, [(fst p1);(fst p2);(fst p3);(fst p4)], t, n
@@ -94,25 +106,43 @@ let rec search_hexes hlist n acc =
   | (t,r)::tl -> 
     match t with 
     | Forest -> 
-      if (r = 6 || r = 8) then search_hexes tl (n+1) (n::acc)
+      if (r = 6 || r = 8) then search_hexes tl (n+1) ((n,Forest)::acc)
       else search_hexes tl (n+1) acc 
     |  Hill-> 
-      if (r = 6 || r = 8) then search_hexes tl (n+1) (n::acc)
+      if (r = 6 || r = 8) then search_hexes tl (n+1) ((n,Hill)::acc)
       else search_hexes tl (n+1) acc 
     | Field -> 
-      if (r = 6 || r = 8) then search_hexes tl (n+1) (n::acc)
+      if (r = 6 || r = 8) then search_hexes tl (n+1) ((n,Field)::acc)
       else search_hexes tl (n+1) acc 
     | Pasture ->  
-      if (r = 5 || r = 6 || r = 8 || r = 9) then search_hexes tl (n+1) (n::acc)
+      if (r = 5 || r = 6 || r = 8 || r = 9) then search_hexes tl (n+1) ((n,Pasture)::acc)
       else search_hexes tl (n+1) acc 
     | Mountain -> 
-      if (r = 5 || r = 6 || r = 8 || r = 9) then search_hexes tl (n+1) (n::acc)
+      if (r = 5 || r = 6 || r = 8 || r = 9) then search_hexes tl (n+1) ((n,Mountain)::acc)
       else search_hexes tl (n+1) acc 
     | Desert -> search_hexes tl (n+1) acc
 	  
   let decide_initial_move g = 
-    let (p1, p2, p3, p4, ((hlist, plist), (inters, rds), d, di, r), t, n) = g in 
-    let list = search_hexes hlist 0 [] in 
+    let (p1, p2, p3, p4, ((hlist, plist), (inters, rds), d, di, r), t, n) = g in   
+    let preference ls = 
+      let comparator (n,t) (n2,t2) = 
+	match t, t2 with
+	| Mountain, Mountain -> 0 
+	| Mountain, _ -> 1
+	| Field, Mountain -> -1 
+	| Field, Field -> 0
+	| Field, _ -> 1 
+	| Pasture, Mountain -> -1
+	| Pasture, Field -> -1
+	| Pasture, Pasture -> 0
+	| Pasture, _ -> 1
+	| Desert, _ -> -1
+	| _, Desert -> 1
+	| _ -> 0
+      in
+	print_ter_list (List.rev(List.sort comparator ls));List.rev (List.sort comparator ls)
+    in 
+     let list = preference(search_hexes hlist 0 []) in 
     let rec choose_pt lst=  
       let occupied pt intersList= 
         match List.nth intersList pt with
@@ -120,7 +150,7 @@ let rec search_hexes hlist n acc =
           |None -> false in
       match list  with 
         | [] -> 0,0
-        | hd::tl -> 
+        | (hd, t)::tl -> 
         let point_to_try = hd in
         let ps =  adjacent_points point_to_try in 
         let p2 = List.hd ps in
@@ -187,8 +217,8 @@ let rec search_hexes hlist n acc =
 
   let decide_trade_response g = TradeResponse(false) (*don't trade with anyone!*)
 
-  let can_afford cost inv = 
-    match (map_cost2 (-) cost inv) with 
+  let can_afford inv cost = 
+    match (map_cost2 (-) inv cost) with 
     | (b,w,o,g,l) -> 
       b < 0 || w < 0 || o < 0 || g < 0 || l < 0
 
@@ -222,12 +252,16 @@ let rec search_hexes hlist n acc =
 	else (	
 	  match cards with 
 	| Reveal(cs) -> begin 
-	  match List.hd cs with 
-	  | Knight -> Action(PlayCard(PlayKnight(0, None)))
-	  | VictoryPoint -> Action(EndTurn)
-	  | RoadBuilding -> Action(PlayCard(PlayRoadBuilding((t.active,(0,0)),None))) (*effectively discard *)
-	  | YearOfPlenty -> Action(PlayCard(PlayYearOfPlenty(Ore, Some(Wool))))
-	  | Monopoly -> Action(PlayCard(PlayMonopoly(Grain)))
+	  match cs with 
+	  | [] -> Action(EndTurn)
+	  | hd::tl -> begin
+	    match hd with 
+	    | Knight -> Action(PlayCard(PlayKnight(0, None)))
+	    | VictoryPoint -> Action(EndTurn)
+	    | RoadBuilding -> Action(PlayCard(PlayRoadBuilding((t.active,(0,0)),None))) (*effectively discard *)
+	    | YearOfPlenty -> Action(PlayCard(PlayYearOfPlenty(Ore, Some(Wool))))
+	    | Monopoly -> Action(PlayCard(PlayMonopoly(Grain)))
+	  end 
 	end 
 	| _ -> Action(EndTurn))))
     
