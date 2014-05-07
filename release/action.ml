@@ -50,8 +50,7 @@ let roll_dice  ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),
     let p4_info roll:(playerinfo)= add_player_resources p4 roll in
     match numRolled with
       | r -> (
-        (*if r = cROBBER_ROLL*)
-        if false
+        if r = cROBBER_ROLL
         then robber_roll (p1,p2,p3,p4,b,(modify_turn t r),n) 
         else ((p1_info r),(p2_info r),(p3_info r),(p4_info) r,b,(modify_turn t r),(t.active, ActionRequest)))
 
@@ -397,10 +396,10 @@ let handle_action g a:(color option*game)=
           let player = ((pc,(inv,cards),tr),(shLst,rLst)) in
           if pc = cActive then choose_players tl cActive (player,pAsk) else(
             if pc = color then choose_players tl cActive (pGive,player) else choose_players tl cActive (pGive,pAsk)))
-        |[]-> (pGive,pGive) in
+        |[]-> (pGive,pAsk) in
     let tGive,tAsk = choose_players (p1::p2::p3::[p4]) t.active (p1,p1) in
     let game = (p1,p2,p3,p4,b,t,n) in
-    if t.tradesmade <=cNUM_TRADES_PER_TURN then(
+    if t.tradesmade <=cNUM_TRADES_PER_TURN && color <> t.active then(
       match (compute_trade tGive t.active color),(compute_trade tAsk t.active color) with
         |Some(gp),Some(ap)->(p1,p2,p3,p4,b,(modify_turn t),(color,TradeRequest)) 
         |_-> end_turn game)
