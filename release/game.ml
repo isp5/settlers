@@ -35,10 +35,12 @@ let state_of_game g =
   match g with 
   | p1, p2, p3, p4, b, t, n -> b, [(fst p1);(fst p2);(fst p3);(fst p4)], t, n
 
-let rec get_intersections color ls acc coord hexList : (settlement*point*hex list) list= 
+let rec get_intersections color ls acc coord hexList robber: (settlement*point*hex list) list= 
   let rec get_hex_list points acc hexList=
     match points with
-      |hd::tl -> get_hex_list tl ((List.nth hexList hd)::acc) hexList
+      |hd::tl -> (
+        if hd = robber then get_hex_list tl acc hexList 
+        else get_hex_list tl ((List.nth hexList hd)::acc) hexList)
       |[]-> acc
    in
   match ls with 
@@ -46,9 +48,9 @@ let rec get_intersections color ls acc coord hexList : (settlement*point*hex lis
   | hd::tl -> 
     match hd with 
     | Some (c, s) -> 
-      if c = color then get_intersections color tl ((s,coord,(get_hex_list (adjacent_pieces coord) [] hexList))::acc) (coord+1) hexList
-      else get_intersections color tl acc (coord+1) hexList
-    | None -> get_intersections color tl acc (coord+1) hexList
+      if c = color then get_intersections color tl ((s,coord,(get_hex_list (adjacent_pieces coord) [] hexList))::acc) (coord+1) hexList robber
+      else get_intersections color tl acc (coord+1) hexList robber
+    | None -> get_intersections color tl acc (coord+1) hexList robber
 
 let rec get_roads color ls acc = 
   match ls with 
@@ -60,22 +62,22 @@ let rec get_roads color ls acc =
       else get_roads c tl acc
 
 
-let associate_with_player p s hlst: ((settlement*point*hex list) list*road list) = 
+let associate_with_player p s hlst robber: ((settlement*point*hex list) list*road list) = 
   match p with 
   | c, _, _ -> 
     match s with 
-    | inters, roads -> (get_intersections c inters [] 0 hlst, get_roads c roads []) 
+    | inters, roads -> (get_intersections c inters [] 0 hlst robber, get_roads c roads []) 
 
 
 let game_of_state s = 
   match s with 
   | b, p1::p2::p3::[p4] , t, n -> begin
     match b with 
-    | (hexL,_), structures , _, _, _ -> 
-      let p1_info = p1, (associate_with_player p1 structures hexL) in
-      let p2_info = p2, (associate_with_player p2 structures hexL) in
-      let p3_info = p3, (associate_with_player p3 structures hexL) in
-      let p4_info = p4, (associate_with_player p4 structures hexL) in
+    | (hexL,_), structures , _, _, robber -> 
+      let p1_info = p1, (associate_with_player p1 structures hexL robber) in
+      let p2_info = p2, (associate_with_player p2 structures hexL robber) in
+      let p3_info = p3, (associate_with_player p3 structures hexL robber) in
+      let p4_info = p4, (associate_with_player p4 structures hexL robber) in
       p1_info, p2_info, p3_info, p4_info, b, t, n
   end 
   | _  -> failwith "something terrible has happened"
