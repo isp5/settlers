@@ -92,11 +92,23 @@ let rec search_hexes hlist n acc =
   match hlist with 
     [] -> acc
   | (t,r)::tl -> 
-    if t = Mountain && (r = 4 || r = 5 || r = 6 || r = 8 || r = 9 || r = 10) then search_hexes tl (n+1) (n::acc)
-    else if t = Pasture && (r = 4 || r = 5 || r = 6 || r = 8 || r = 9 || r = 10) then search_hexes tl (n+1)(n::acc)
-    else if t = Field && (r = 4 || r = 5 || r = 6 || r = 8 || r = 9 || r = 10) then search_hexes tl (n+1) (n::acc)
-    else search_hexes tl (n+1) acc 
-  
+    match t with 
+    | Mountain -> 
+      if (r = 5 || r = 6 || r = 8 || r = 9) then search_hexes tl (n+1) (n::acc)
+      else search_hexes tl (n+1) acc 
+    | Pasture -> 
+      if (r = 5 || r = 6 || r = 8 || r = 9) then search_hexes tl (n+1) (n::acc)
+      else search_hexes tl (n+1) acc 
+    | Field -> 
+      if (r = 5 || r = 6 || r = 8 || r = 9) then search_hexes tl (n+1) (n::acc)
+      else search_hexes tl (n+1) acc 
+    | Hill ->  
+      if (r = 5 || r = 6 || r = 8 || r = 9) then search_hexes tl (n+1) (n::acc)
+      else search_hexes tl (n+1) acc 
+    | Forest -> 
+      if (r = 5 || r = 6 || r = 8 || r = 9) then search_hexes tl (n+1) (n::acc)
+      else search_hexes tl (n+1) acc 
+    | Desert -> search_hexes tl (n+1) acc
 	  
   let decide_initial_move g = 
     let (p1, p2, p3, p4, ((hlist, plist), s, d, di, r), t, n) = g in 
