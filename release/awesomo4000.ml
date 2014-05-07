@@ -93,33 +93,39 @@ let rec search_hexes hlist n acc =
     [] -> acc
   | (t,r)::tl -> 
     match t with 
-    | Mountain -> 
-      if (r = 5 || r = 6 || r = 8 || r = 9) then search_hexes tl (n+1) (n::acc)
+    | Forest -> 
+      if (r = 6 || r = 8) then search_hexes tl (n+1) (n::acc)
       else search_hexes tl (n+1) acc 
-    | Pasture -> 
-      if (r = 5 || r = 6 || r = 8 || r = 9) then search_hexes tl (n+1) (n::acc)
+    |  Hill-> 
+      if (r = 6 || r = 8) then search_hexes tl (n+1) (n::acc)
       else search_hexes tl (n+1) acc 
     | Field -> 
+      if (r = 6 || r = 8) then search_hexes tl (n+1) (n::acc)
+      else search_hexes tl (n+1) acc 
+    | Pasture ->  
       if (r = 5 || r = 6 || r = 8 || r = 9) then search_hexes tl (n+1) (n::acc)
       else search_hexes tl (n+1) acc 
-    | Hill ->  
-      if (r = 5 || r = 6 || r = 8 || r = 9) then search_hexes tl (n+1) (n::acc)
-      else search_hexes tl (n+1) acc 
-    | Forest -> 
+    | Mountain -> 
       if (r = 5 || r = 6 || r = 8 || r = 9) then search_hexes tl (n+1) (n::acc)
       else search_hexes tl (n+1) acc 
     | Desert -> search_hexes tl (n+1) acc
 	  
   let decide_initial_move g = 
-    let (p1, p2, p3, p4, ((hlist, plist), s, d, di, r), t, n) = g in 
+    let (p1, p2, p3, p4, ((hlist, plist), (inters, rds), d, di, r), t, n) = g in 
     let list = search_hexes hlist 0 [] in 
-    match list with 
-    | [] -> InitialMove (0,0)
-    | hd::tl -> 
-      let point_to_try = hd in 
-      let ps = adjacent_points point_to_try in 
-      let p2 = List.hd ps in
-      InitialMove (point_to_try, p2) 
+    let choose_pt lst=  
+      let occupied pt intersList= 
+        match List.nth intersList pt with
+          |Some(a)-> true
+          |None -> false
+      match list  with 
+        | [] -> InitialMove (0,0)
+        | hd::tl -> 
+        let point_to_try = if (occupied hd) then choose_pt tl else hd in 
+        let ps =  adjacent_points point_to_try in 
+        let p2 = List.hd ps in
+        InitialMove (point_to_try, p2) 
+    choose_pt 0 list
     
   let get_player_by_color c g = 
     match g with 
