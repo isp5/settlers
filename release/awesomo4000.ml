@@ -187,7 +187,7 @@ let rec search_hexes hlist n acc =
 
   let decide_trade_response g = TradeResponse(false) (*don't trade with anyone!*)
 
-  let can_afford inv cost = 
+  let can_afford cost inv = 
     match (map_cost2 (-) cost inv) with 
     | (b,w,o,g,l) -> 
       b < 0 || w < 0 || o < 0 || g < 0 || l < 0
