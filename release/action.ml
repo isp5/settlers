@@ -537,7 +537,7 @@ let handle_action g a:(color option*game)=
         match crds with
          |hd::tl ->(
            match hd with
-             |VictoryPoint-> cards_vpionts tl (res+cNUM_VICTORYPOINT)
+             |VictoryPoint-> cards_vpionts tl (res+cVP_CARD)
              |_-> cards_vpionts tl res)
          |[]->res in
       let trophy_vpoints = 
