@@ -58,8 +58,8 @@ let rec get_roads color ls acc =
   | hd::tl -> 
     match hd with 
     | c, l -> 
-      if c = color then get_roads c tl (hd::acc)
-      else get_roads c tl acc
+      if c = color then get_roads color tl (hd::acc)
+      else get_roads color tl acc
 
 
 let associate_with_player p s hlst robber: ((settlement*point*hex list) list*road list) = 

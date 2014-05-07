@@ -50,7 +50,8 @@ let roll_dice  ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),
     let p4_info roll:(playerinfo)= add_player_resources p4 roll in
     match numRolled with
       | r -> (
-        if r = cROBBER_ROLL 
+        (*if r = cROBBER_ROLL*)
+        if false
         then robber_roll (p1,p2,p3,p4,b,(modify_turn t r),n) 
         else ((p1_info r),(p2_info r),(p3_info r),(p4_info) r,b,(modify_turn t r),(t.active, ActionRequest)))
 
@@ -116,10 +117,10 @@ let rec replace_at_index el ls n =
   | [] -> [el]
   | hd::tl -> if n = 0 then el::tl else hd::replace_at_index el tl (n-1)
 
-let can_afford inv cost : bool = 
-  let left = map_cost2 (-) cost inv in 
+let can_afford inv cost: bool = 
+  let left = map_cost2 (-) inv cost in 
   match left with 
-  | (b, w, o, l, g) -> 
+  | (b, w, o, g, l) -> 
     b >=0 && w >= 0 && o >=0 && l >= 0 && g >= 0
 
 let road_to_here pt pi : bool = 
@@ -129,7 +130,7 @@ let road_to_here pt pi : bool =
     | hd::tl -> 
       match hd with 
       | color, (pt1, pt2) -> 
-	if pt1 = pt || pt2 = pt then loop tl pt (true || result)
+	print_endline (string_of_int pt1);print_endline (string_of_int pt2);if pt1 = pt || pt2 = pt then true
 	else loop tl pt (false || result) 
   in 	  
   match pi with 
@@ -194,6 +195,7 @@ let build_road b r ro g cost : game =
     let (color, line) = r in 
     let (pt1, pt2) = line in 
     let handle_build g cost =
+      print_endline "handling build";
       let inter_pi = remove_from_inventory current_player cost in 
       let (player, (sphl, rl)) = inter_pi in 
       let new_player_info = (player, (sphl, r::rl)) in 
@@ -203,6 +205,10 @@ let build_road b r ro g cost : game =
       else if num = 3 then (p1, p2, new_player_info, p4, new_board, t, (t.active, ActionRequest))
       else (p1, p2, p3, new_player_info, new_board, t, (t.active, ActionRequest))
     in
+    print_endline (string_of_bool (can_afford inv cost));print_endline (string_of_bool (check_adjacent r));
+    print_endline (string_of_bool (not (enemy_settlement_at_point pt1 (t.active) inters)));
+    print_endline (string_of_bool (not (road_already line roads false)));
+    print_endline (string_of_bool (road_to_here pt1 current_player));print_endline (string_of_bool (can_build b g));
     if (can_afford inv cost) && (check_adjacent r) && (not (enemy_settlement_at_point pt1 (t.active) inters)) 
       && (not (road_already line roads false)) && (road_to_here pt1 current_player) && can_build b g 
     then handle_build g cost 
