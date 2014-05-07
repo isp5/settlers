@@ -27,6 +27,14 @@ let print_c c =
     |Orange->print_endline "Orange"
     |White->print_endline "White"
 
+let print_res res =
+  match res with
+    | Brick -> print_endline "Brick"
+    | Wool -> print_endline "Wool"
+    | Ore -> print_endline "Ore"
+    | Grain -> print_endline "Grain"
+    | Lumber -> print_endline "Lumber"
+
 let color_of ((pc,(inv,cards),tr),(shLst,rLst)) = pc
 
 let structures_of ((pc,(inv,cards),tr),(shLst,rLst)) = shLst
@@ -151,7 +159,7 @@ let initial_move g line : game =
     else (prev_turn color) in
   
   let looped = (have_n_structures (fst(get_player_by_color g color)) 2) && (turn.active = color) in
-  let next_request = if looped then (print_endline"looped";(turn.active, ActionRequest)) else (next_color, InitialRequest) in 
+  let next_request = if looped then (turn.active, ActionRequest) else (next_color, InitialRequest) in 
   let nboard = if looped then board else new_board in 
   if num = 1 then ((fst p1, new_info), p2, p3, p4, nboard, turn, next_request)
   else if num = 2 then (p1, (fst p2, new_info), p3, p4, nboard, turn, next_request)
@@ -176,22 +184,23 @@ let rec convert_to_cost ls cost =
       
 
 let discard_move g cost : game = 
-  let (current_player, num) = get_current_playerinfo g in 
+  let (p1, p2, p3, p4, b, t, (nCOl,req)) = g in 
+  let (current_player, num) = get_player_by_color g nCOl in 
   let check_valid_cost g cost : bool = 
     if sum_cost cost < 0 then false 
     else (
     let (inv, cards) = get_player_hand current_player in 
     let sum = map_cost2 (-) inv cost in
     match sum with 
-    | (b, w, o, l, g) ->  b < 0 || w < 0 || o < 0 || l < 0 || g < 0 )
+    | (b, w, o, g, l) ->  b < 0 || w < 0 || o < 0 || l < 0 || g < 0 )
   in 
   let gen_valid_cost g (inv:cost) : cost = 
     match inv with 
-    | (b, w, o, l, g) -> 
+    | (b, w, o, g, l) -> 
       let inv_list = (make_list Brick b []) @ (make_list Wool w []) @ (make_list Ore o []) @ (make_list Lumber l []) @ (make_list Grain g []) in 
       (*grab a certain number from this list, convert it to a cost *) 
       let hand_size = sum_cost inv in
-      let number_to_discard = if hand_size >= cMAX_HAND_SIZE then hand_size/2 else 0 in
+      let number_to_discard = if hand_size > cMAX_HAND_SIZE then hand_size/2 else 0 in
       let rec pick_n ls n acc =  (*for this to work n must be smaller than size of the list *)
 	match n with 
 	| 0 -> acc 
@@ -208,7 +217,7 @@ let discard_move g cost : game =
     let (pc, hand, trophies) = fst current_player in 
     let updated_hand = (new_inv, snd hand) in 
     let (color, req) = n in 
-    let looped = ((color,req) = ((next_turn color),DiscardRequest)) in 
+    let looped = ((color,req) = (t.active,DiscardRequest)) in 
     let next = if looped then (t.active,ActionRequest) else (next_turn color, DiscardRequest) in
     if num = 1 then (((pc,updated_hand, trophies), snd current_player), p2, p3, p4, b, t, next) 
     else if num = 2 then (p1, ((pc, updated_hand, trophies), snd current_player), p3, p4, b, t, next)
@@ -340,7 +349,7 @@ let robber_move g rm : game =
       | 4,3 -> (p1, p2, new_p2, new_p1, new_board, turn, (next_color, DiscardRequest))
       | _ -> failwith "AHHHHH"
     end 
-    | None -> (p1, p2, p3, p4, new_board, turn, next) 
+    | None -> (p1, p2, p3, p4, new_board, turn, ((next_turn turn.active), DiscardRequest)) 
   in
   if check_valid board rm then handle_valid_move g rm 
   else let valid_rm = gen_valid_move g rm in handle_valid_move g valid_rm 
