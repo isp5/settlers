@@ -114,7 +114,7 @@ let handle_move g m =
     | _ -> Action.handle_action g EndTurn 
   end in
   match action_mapper g m with
-    |a -> Print.print_update turn.active m (state_of_game (snd(a)));a
+    |a -> Print.print_update color m (state_of_game (snd(a)));a
  
  
 let presentation g = 
