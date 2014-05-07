@@ -63,7 +63,6 @@ let rec replace_at_index el ls n =
 
 
 let initial_move g line : game = 
-  print_endline "Starting initial move";
   let rec check_structures ps inters result acc : bool * point list =
     match ps with 
       [] -> result, acc
@@ -74,12 +73,12 @@ let initial_move g line : game =
   let rec gen_valid_initial_move inters grab_bag = 
     let (point, rest) = pick_one grab_bag in
     match (List.nth inters point) with 
-    | Some _ -> print_endline (string_of_int point);gen_valid_initial_move inters rest
+    | Some _ -> gen_valid_initial_move inters rest
     | None -> 
       let ps = adjacent_points point in
       let (result, p2s) = check_structures ps inters false [] in 
-      if result then (print_endline (string_of_int point); gen_valid_initial_move inters rest)
-      else (print_endline (string_of_int point);point, (List.hd p2s)) in  
+      if result then gen_valid_initial_move inters rest
+      else (point, (List.hd p2s)) in  
 (*will check validity of initial move.  If move is invalid a valid move is returned *)
   let initial_move_check (g:game) line = 
     let (point1,point2) = line in 
@@ -89,11 +88,12 @@ let initial_move g line : game =
     let (inters, roads) = structures in
     let rec range_list a b = if a > b then [] else a::(range_list (a+1) b) in
     if not (List.mem point2 check_these) 
-    then (print_color g;print_endline "generating move";gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM)) 
-    else if point1 < cMIN_POINT_NUM || point1 > cMAX_POINT_NUM || point2 < cMIN_POINT_NUM || point2 > cMAX_POINT_NUM then (print_color g;print_endline "generating move";gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM))
+    then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM)
+    else if point1 < cMIN_POINT_NUM || point1 > cMAX_POINT_NUM || point2 < cMIN_POINT_NUM || point2 > cMAX_POINT_NUM 
+    then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM)
     else 
       let (result, p2s) = check_structures check_these inters false [] in
-      (if result then (print_color g;print_endline "generating move";gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM))
+      (if result then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM)
        else (point1, (List.hd p2s))) in
   let (point1, point2) = initial_move_check g line in
   (*make the move -> update game to reflect the move was made *)
@@ -103,7 +103,7 @@ let initial_move g line : game =
   let new_road = (color, (point1, point2)) in 
   let new_town = Some(color, Town) in
   (*get the right player, make new info *)
-  let (current_player, num) = get_current_playerinfo g in
+  let (current_player, num) = get_player_by_color g color in
   let current_info = snd current_player in 
   let sphl, rl = current_info in 
   (* need the hexes that correspond to this point1 *)
@@ -113,6 +113,16 @@ let initial_move g line : game =
       |hd::tl -> get_hex_list tl ((List.nth hexList hd)::acc) hexList
       |[]-> acc
   in
+  let rec add_new_resources inv hexlist : cost= 
+    match hexlist with 
+      [] -> inv
+    | (terrain, roll)::tl -> 
+      let get_this = if (terrain = Desert) then (0,0,0,0,0) 
+	else single_resource_cost (get_some (resource_of_terrain terrain)) in
+	add_new_resources (map_cost2 (+) inv get_this) tl  
+  in
+  let new_hexes = get_hex_list hexpoints [] hlist in 
+  let gets_these = add_new_resources (0,0,0,0,0) new_hexes in
   let new_info = ((Town,point1,(get_hex_list hexpoints [] hlist))::sphl, new_road::rl) in 
   (* replace the right element of inters with the new value *) 
   let new_inters = replace_at_index new_town inters point1 in 
@@ -153,10 +163,18 @@ let initial_move g line : game =
   let looped = (have_n_structures (fst(get_player_by_color g color)) 2) && (turn.active = color) in
   let next_request = if looped then (print_endline"looped";(turn.active, ActionRequest)) else (next_color, InitialRequest) in 
   let nboard = if looped then board else new_board in 
-  if num = 1 then ((fst p1, new_info), p2, p3, p4, nboard, turn, next_request)
-  else if num = 2 then (p1, (fst p2, new_info), p3, p4, nboard, turn, next_request)
-  else if num = 3 then (p1, p2, (fst p3, new_info), p4, nboard, turn, next_request)
-  else (p1, p2, p3, (fst p4, new_info), nboard, turn, next_request)
+  if num = 1 then (
+    let (pcc, (inven, cs), trophies) = fst p1 in 
+    (((pcc, ((map_cost2 (+) inven gets_these), cs), trophies), new_info), p2, p3, p4, nboard, turn, next_request))
+  else if num = 2 then (
+    let (pcc, (inven, cs), trophies) = fst p2 in 
+    (p1,((pcc, ((map_cost2 (+) inven gets_these), cs), trophies), new_info), p3, p4, nboard, turn, next_request))
+  else if num = 3 then (
+    let (pcc, (inven, cs), trophies) = fst p3 in 
+    (p1, p2, ((pcc, ((map_cost2 (+) inven gets_these), cs), trophies), new_info), p4, nboard, turn, next_request))
+  else (
+    let (pcc, (inven, cs), trophies) = fst p4 in 
+    (p1, p2, p3,((pcc, ((map_cost2 (+) inven gets_these), cs), trophies), new_info), nboard, turn, next_request))
 
 let rec make_list c n acc = 
 	match n with 
