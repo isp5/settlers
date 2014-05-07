@@ -13,6 +13,24 @@ type playerinfo = player*info
 (*Information for each player, then the rest of the board in structures then turn and next like state *)
 type game = playerinfo*playerinfo*playerinfo*playerinfo*board*turn*next
 
+let print_color ((p1:playerinfo),(p2:playerinfo),(p3:playerinfo),(p4:playerinfo),b,t,(col,r)) =
+  match col with
+    |Blue->print_endline "Blue"
+    |Red->print_endline "Red"
+    |Orange->print_endline "Orange"
+    |White->print_endline "White"
+
+let print_c c =
+  match c with
+    |Blue->print_endline "Blue"
+    |Red->print_endline "Red"
+    |Orange->print_endline "Orange"
+    |White->print_endline "White"
+
+let color_of ((pc,(inv,cards),tr),(shLst,rLst)) = pc
+
+let structures_of ((pc,(inv,cards),tr),(shLst,rLst)) = shLst
+
 let get_player_color pi = 
   match (fst pi) with 
   | c,_,_ -> c
@@ -44,7 +62,8 @@ let rec replace_at_index el ls n =
   | hd::tl -> if n = 0 then el::tl else hd::replace_at_index el tl (n-1)
 
 
-let rec initial_move g line : game = 
+let initial_move g line : game = 
+  print_endline "Starting initial move";
   let rec check_structures ps inters result acc : bool * point list =
     match ps with 
       [] -> result, acc
@@ -55,12 +74,12 @@ let rec initial_move g line : game =
   let rec gen_valid_initial_move inters grab_bag = 
     let (point, rest) = pick_one grab_bag in
     match (List.nth inters point) with 
-    | Some _ -> gen_valid_initial_move inters rest
+    | Some _ -> print_endline (string_of_int point);gen_valid_initial_move inters rest
     | None -> 
       let ps = adjacent_points point in
       let (result, p2s) = check_structures ps inters false [] in 
-      if result then gen_valid_initial_move inters rest
-      else point, (List.hd p2s) in  
+      if result then (print_endline (string_of_int point); gen_valid_initial_move inters rest)
+      else (print_endline (string_of_int point);point, (List.hd p2s)) in  
 (*will check validity of initial move.  If move is invalid a valid move is returned *)
   let initial_move_check (g:game) line = 
     let (point1,point2) = line in 
@@ -70,18 +89,19 @@ let rec initial_move g line : game =
     let (inters, roads) = structures in
     let rec range_list a b = if a > b then [] else a::(range_list (a+1) b) in
     if not (List.mem point2 check_these) 
-    then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM) 
-    else if point1 < cMIN_POINT_NUM || point1 > cMAX_POINT_NUM || point2 < cMIN_POINT_NUM || point2 > cMAX_POINT_NUM then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM)
+    then (print_color g;print_endline "generating move";gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM)) 
+    else if point1 < cMIN_POINT_NUM || point1 > cMAX_POINT_NUM || point2 < cMIN_POINT_NUM || point2 > cMAX_POINT_NUM then (print_color g;print_endline "generating move";gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM))
     else 
       let (result, p2s) = check_structures check_these inters false [] in
-      (if result then gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM)
+      (if result then (print_color g;print_endline "generating move";gen_valid_initial_move inters (range_list cMIN_POINT_NUM cMAX_POINT_NUM))
        else (point1, (List.hd p2s))) in
   let (point1, point2) = initial_move_check g line in
   (*make the move -> update game to reflect the move was made *)
   let (p1, p2, p3, p4, board, turn, next) = g in
+  let (color, req) = next in
   let ((hlist, plist), (inters, roads), deck, discard, robber) = board in
-  let new_road = (turn.active, (point1, point2)) in 
-  let new_town = Some(turn.active, Town) in
+  let new_road = (color, (point1, point2)) in 
+  let new_town = Some(color, Town) in
   (*get the right player, make new info *)
   let (current_player, num) = get_current_playerinfo g in
   let current_info = snd current_player in 
@@ -97,15 +117,40 @@ let rec initial_move g line : game =
   (* replace the right element of inters with the new value *) 
   let new_inters = replace_at_index new_town inters point1 in 
   let new_board = ((hlist, plist), (new_inters, (new_road::roads)), deck, discard, robber) in 
-  (* blue red orange white white orange red blue *)
-  let (color, req) = next in 
-  let ((player,(structures, roads)),ind) = (get_player_by_color g White) in
-  let has_no_structures = (structures = []) in 
+  (* blue red orange white white orange red blue *) 
+  (*let ((player,(structures, roads)),ind) = (get_player_by_color g White) in*)
+  let has_no_structures = ((structures_of (fst(get_player_by_color g color))) = []) in
+  let other_players_have_1_structure = 
+    let (pc1,(inv1,cards1),(k1,lr1,la1)),(shLst1,rLst1) = p1 in
+    let (pc2,(inv2,cards2),(k2,lr2,la2)),(shLst2,rLst2) = p2 in
+    let (pc3,(inv3,cards3),(k3,lr3,la3)),(shLst3,rLst3) = p3 in
+    let (pc4,(inv4,cards4),(k4,lr4,la4)),(shLst4,rLst4) = p4 in
+    if color = pc1 then not (shLst2 = [] || shLst3 = [] || shLst4 = [])
+    else if color = pc2 then not (shLst1 = [] || shLst3 = [] || shLst4 = [])
+    else if color = pc3 then not (shLst1 = [] || shLst2 = [] || shLst4 = [])
+    else not (shLst1 = [] || shLst2 = [] || shLst3 = []) in
+
+  let other_players_have_2_structures = 
+    let (pc1,(inv1,cards1),(k1,lr1,la1)),(shLst1,rLst1) = p1 in
+    let (pc2,(inv2,cards2),(k2,lr2,la2)),(shLst2,rLst2) = p2 in
+    let (pc3,(inv3,cards3),(k3,lr3,la3)),(shLst3,rLst3) = p3 in
+    let (pc4,(inv4,cards4),(k4,lr4,la4)),(shLst4,rLst4) = p4 in
+    if color = pc1 then List.length shLst2 = 2 && List.length shLst3 = 2 && List.length shLst4 = 2
+    else if color = pc2 then List.length shLst1 = 2 && List.length shLst3 = 2 && List.length shLst4 = 2
+    else if color = pc3 then List.length shLst2 = 2 && List.length shLst1 = 2 && List.length shLst4 = 2
+    else List.length shLst2 = 2 && List.length shLst3 = 2 && List.length shLst1 = 2 in
+  
+  let have_n_structures p n= 
+    let (pc,(inv,cards),(k,lr,la)),(shLst,rLst) = p in 
+    (List.length shLst) = n in
+
   let next_color = 
-    if color = White && has_no_structures then White 
-    else if color = White && (not has_no_structures) then prev_turn color 
-    else next_turn color in
-  let looped = (not has_no_structures) && (turn.active = color) in
+    if (has_no_structures && other_players_have_1_structure) then (color) 
+    else if has_no_structures then (next_turn color)
+    else if other_players_have_2_structures && (have_n_structures (fst(get_player_by_color g color)) 1) then color
+    else (prev_turn color) in
+  
+  let looped = (have_n_structures (fst(get_player_by_color g color)) 2) && (turn.active = color) in
   let next_request = if looped then (turn.active, ActionRequest) else (next_color, InitialRequest) in 
   if num = 1 then ((fst p1, new_info), p2, p3, p4, new_board, turn, next_request)
   else if num = 2 then (p1, (fst p2, new_info), p3, p4, new_board, turn, next_request)

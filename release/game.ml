@@ -86,6 +86,7 @@ let init_game () = game_of_state (gen_initial_state())
 let handle_move g m = 
   let (p1, p2, p3, p4, board, turn, next) = g in 
   let (color, request) = next in
+  let action_mapper g m = 
   match request with 
   | InitialRequest -> begin
     match m with 
@@ -99,19 +100,21 @@ let handle_move g m =
   end 
   | DiscardRequest -> begin 
     match m with
-    | DiscardMove(cost) ->  None, Move.discard_move g cost
+    | DiscardMove(cost) -> None, Move.discard_move g cost
     | _ -> None, Move.discard_move g (-1, -1, -1, -1, -1) (*will be bogus move, random valid will be generated *)
   end 
   | TradeRequest -> begin
     match m with 
-    | TradeResponse(bool) -> None, Move.trade_response g bool 
+    | TradeResponse(b) -> None, Move.trade_response g b 
     | _ -> None, Move.trade_response g false (*not sure what else to do *)
   end 
   | ActionRequest -> begin
     match m with 
     | Action(action) -> Action.handle_action g action
     | _ -> Action.handle_action g EndTurn 
-  end 
+  end in
+  match action_mapper g m with
+    |a -> Print.print_update turn.active m (state_of_game (snd(a)));a
  
  
 let presentation g = 

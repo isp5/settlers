@@ -505,14 +505,14 @@ let handle_action g a:(color option*game)=
         |_->failwith "multiple people have longest road trophy" in
     let check_longest_army p activeK =
       let (pc,(inv,cards),(k,lr,la)),(shLst,rLst) = p in
-      let kT,cT = get_some hasLA in
+      let kT,cT = if is_none hasLA then (0,t.active) else get_some hasLA in
       if is_none hasLA then (if k >= cMIN_LARGEST_ARMY then (pc,(inv,cards),(k,lr,true)),(shLst,rLst) else p)
       else if k > kT then (pc,(inv,cards),(k,lr,true)),(shLst,rLst) 
       else if pc = cT && k<activeK then (pc,(inv,cards),(k,lr,false)),(shLst,rLst) else p in
       
     let check_longest_road p activeRd =
       let (pc,(inv,cards),(k,lr,la)),(shLst,rLst) = p in
-      let laT,cT = get_some hasLR in
+      let laT,cT = if is_none hasLR then (0,t.active) else get_some hasLR in
       let myLR = longest_road pc rLst inters in
       if is_none hasLR then (if  myLR >= cMIN_LONGEST_ROAD then (pc,(inv,cards),(k,true,la)),(shLst,rLst) else p)
       else if myLR > laT then (pc,(inv,cards),(k,lr,true)),(shLst,rLst)
@@ -545,7 +545,7 @@ let handle_action g a:(color option*game)=
     let np3 = check_longest_road (check_longest_army p3 k3) (longest_road pc3 rLst3 inters) in
     let np4 = check_longest_road (check_longest_army p4 k4) (longest_road pc4 rLst4 inters) in
     let game = (np1,np2,np3,np4,(map,(inters,rds),deck,discard,robber),t,n) in
-    match (pc1 = t.active,pc2 = t.active,pc3 = t.active,pc4 = t.active) with
+    match (pc1 = t.active, pc2 = t.active, pc3 = t.active, pc4 = t.active) with
       |true,false,false,false-> (calculate_player_victory_pts np1),game
       |false,true,false,false-> (calculate_player_victory_pts np2),game
       |false,false,true,false-> (calculate_player_victory_pts np3),game
