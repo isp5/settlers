@@ -113,19 +113,19 @@ let rec search_hexes hlist n acc =
   let decide_initial_move g = 
     let (p1, p2, p3, p4, ((hlist, plist), (inters, rds), d, di, r), t, n) = g in 
     let list = search_hexes hlist 0 [] in 
-    let choose_pt lst=  
+    let rec choose_pt lst=  
       let occupied pt intersList= 
         match List.nth intersList pt with
           |Some(a)-> true
-          |None -> false
+          |None -> false in
       match list  with 
-        | [] -> InitialMove (0,0)
+        | [] -> 0,0
         | hd::tl -> 
-        let point_to_try = if (occupied hd) then choose_pt tl else hd in 
+        let point_to_try = hd in
         let ps =  adjacent_points point_to_try in 
         let p2 = List.hd ps in
-        InitialMove (point_to_try, p2) 
-    choose_pt 0 list
+        if (occupied hd inters) then (choose_pt tl) else (point_to_try,p2) in
+    InitialMove(choose_pt list)
     
   let get_player_by_color c g = 
     match g with 
