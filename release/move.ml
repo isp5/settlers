@@ -172,7 +172,7 @@ let initial_move g line : game =
     else if other_players_have_2_structures && (have_n_structures (fst(get_player_by_color g color)) 1) then color
     else (prev_turn color) in
   
-  let looped = (have_n_structures (fst(get_player_by_color g color)) 2) && (turn.active = color) in
+  let looped = (have_n_structures (fst(get_player_by_color g color)) 1) && (turn.active = color) in
   let next_request = if looped then (turn.active, ActionRequest) else (next_color, InitialRequest) in 
   let nboard = if looped then board else new_board in 
   if num = 1 then (
